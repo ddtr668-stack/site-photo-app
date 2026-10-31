@@ -1,0 +1,761 @@
+<title>현장 사진대지</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one-column field app — sticky top bar, content list, fixed bottom action bar; sheets slide up from the bottom. */
+:root{
+  --bg:#EEF0EC; --surface:#FFFFFF; --sunk:#E3E6E1; --ink:#1B2024; --muted:#5B656B; --line:#CDD2CC;
+  --accent:#F0B400; --accent-ink:#1B2024; --accent-soft:#FFF1C2; --danger:#C2391F; --ok:#2F7A4B;
+  --pre:#5C6BC0; --mid:#E08A00; --post:#2F7A4B;
+  --f-ui:"IBM Plex Sans KR","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-data:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#14181B; --surface:#1D2226; --sunk:#262C31; --ink:#E8ECE9; --muted:#9AA4A9; --line:#323A40;
+  --accent:#F4C21F; --accent-ink:#14181B; --accent-soft:#3A3217; --danger:#F07A5E; --ok:#6BC28C;
+  --pre:#8F9BEA; --mid:#F2A73A; --post:#6BC28C; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#14181B; --surface:#1D2226; --sunk:#262C31; --ink:#E8ECE9; --muted:#9AA4A9; --line:#323A40;
+  --accent:#F4C21F; --accent-ink:#14181B; --accent-soft:#3A3217; --danger:#F07A5E; --ok:#6BC28C;
+  --pre:#8F9BEA; --mid:#F2A73A; --post:#6BC28C; color-scheme:dark }
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--surface)}
+*{box-sizing:border-box}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:10px;min-height:56px;padding-block:6px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:-.01em}
+.mark{width:28px;height:28px;border-radius:6px;background:var(--accent);display:grid;place-items:center;flex:none}
+.top h1{font-size:17px;margin:0;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-wrap:balance}
+.spacer{flex:1}
+.icon-btn{border:0;background:transparent;width:40px;height:40px;border-radius:8px;display:grid;place-items:center;flex:none}
+.icon-btn:hover{background:var(--sunk)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 14px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px}
+.btn:hover{background:var(--sunk)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(.96)}
+.btn.danger{color:var(--danger)}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn:disabled{opacity:.5;cursor:default}
+.mode{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.dot.warn{background:var(--mid)}
+main{padding-block:16px 112px}
+.section-label{font-size:12px;font-weight:600;letter-spacing:.06em;color:var(--muted);margin:4px 0 10px}
+/* site cards */
+.sites{display:grid;gap:10px}
+.site{display:grid;grid-template-columns:84px 1fr;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px;text-align:left;width:100%}
+.site:hover{border-color:var(--muted)}
+.thumb{width:84px;height:84px;border-radius:6px;background:var(--sunk);overflow:hidden;display:grid;place-items:center;color:var(--muted)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.site-body{min-width:0;display:grid;gap:3px}
+.site-name{font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.site-sub{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:3px}
+.tag{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--sunk);color:var(--muted);font-variant-numeric:tabular-nums}
+.tag b{color:var(--ink);font-weight:600}
+/* empty */
+.empty{display:grid;gap:18px;justify-items:center;text-align:center;padding:28px 8px}
+.empty h2{margin:0;font-size:19px;text-wrap:balance}
+.empty p{margin:0;color:var(--muted);max-width:34ch}
+.sheet-mock{width:150px;aspect-ratio:210/297;background:#fff;border:1px solid var(--line);border-radius:3px;padding:9px;display:grid;grid-template-rows:auto repeat(3,1fr);gap:6px;box-shadow:0 8px 24px rgba(0,0,0,.08)}
+.sheet-mock .t{height:6px;width:60%;margin:0 auto;background:#1B2024;border-radius:2px}
+.sheet-mock .row{display:grid;grid-template-columns:1.7fr 1fr;border:1px solid #1B2024}
+.sheet-mock .ph{background:linear-gradient(135deg,#C9CFC6,#A9B2A6)}
+.sheet-mock .tb{display:grid;grid-template-rows:repeat(4,1fr);border-left:1px solid #1B2024}
+.sheet-mock .tb i{border-bottom:1px solid #1B2024}
+.sheet-mock .tb i:last-child{border:0}
+/* site screen */
+.site-head{display:grid;gap:4px;margin-bottom:14px}
+.site-head .sub{color:var(--muted);font-size:13px}
+.filters{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;scrollbar-width:none}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:500;white-space:nowrap;display:inline-flex;gap:6px;align-items:center;min-height:34px}
+.chip .n{font-family:var(--f-data);font-size:12px;color:var(--muted)}
+.chip.on{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.chip.on .n{color:var(--surface);opacity:.7}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media(min-width:620px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.tile{position:relative;border:1px solid var(--line);background:var(--surface);border-radius:var(--r);overflow:hidden;text-align:left;padding:0;display:grid}
+.tile .img{aspect-ratio:4/3;background:var(--sunk);position:relative}
+.tile .img img{width:100%;height:100%;object-fit:cover;display:block}
+.no{position:absolute;left:6px;top:6px;font-family:var(--f-data);font-size:11px;background:rgba(20,24,27,.78);color:#fff;padding:2px 6px;border-radius:4px}
+.stage{position:absolute;right:6px;top:6px;font-size:11px;font-weight:600;padding:2px 7px;border-radius:4px;color:#fff}
+.st-시공전{background:var(--pre)} .st-시공중{background:var(--mid)} .st-시공후{background:var(--post)}
+.tile .cap{padding:8px 9px 9px;display:grid;gap:1px;min-width:0}
+.tile .cap b{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .cap span{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .cap .muted-i{color:var(--muted);font-weight:400}
+.tile.sel{outline:3px solid var(--accent);outline-offset:-3px}
+.check{position:absolute;left:6px;bottom:6px;width:26px;height:26px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.35);display:grid;place-items:center}
+.tile.sel .check{background:var(--accent);border-color:var(--accent)}
+.hint{color:var(--muted);font-size:13px;text-align:center;padding:30px 10px;border:1.5px dashed var(--line);border-radius:var(--r)}
+/* bottom bar */
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.bar .wrap{display:flex;gap:8px;padding-block:10px}
+.bar .btn{flex:1}
+.bar .count{align-self:center;font-weight:600;font-size:14px;flex:none;padding-right:4px;font-variant-numeric:tabular-nums}
+/* sheets */
+.scrim{position:fixed;inset:0;z-index:40;background:rgba(10,12,14,.5);display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:620px;max-height:94%;border-radius:16px 16px 0 0;display:flex;flex-direction:column;overflow:hidden;padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(min-width:700px){.scrim{align-items:center}.sheet{border-radius:16px}}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:up .2s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}}}
+.sheet-head{display:flex;align-items:center;gap:8px;padding:10px 8px 10px max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line)}
+.sheet-head h2{margin:0;font-size:16px;flex:1;min-width:0}
+.sheet-body{overflow-y:auto;padding:16px max(16px,env(safe-area-inset-right,0px)) 16px max(16px,env(safe-area-inset-left,0px));display:grid;gap:16px}
+.sheet-foot{display:flex;gap:8px;padding:10px 16px;border-top:1px solid var(--line)}
+.sheet-foot .btn{flex:1}
+.field{display:grid;gap:6px;min-width:0}
+.field label{font-size:13px;font-weight:600}
+.field .opt{font-weight:400;color:var(--muted)}
+.inp{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:10px 12px;min-height:44px}
+.inp:focus{border-color:var(--ink);outline:none}
+textarea.inp{min-height:76px;resize:vertical}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sugg{display:flex;flex-wrap:wrap;gap:6px}
+.sugg .chip{min-height:30px;padding:4px 10px;font-size:12px}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-right:1px solid var(--line);background:var(--surface);padding:9px 4px;font-size:13px;font-weight:500;min-height:42px}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--ink);color:var(--surface)}
+.viewer{position:relative;background:var(--sunk);border-radius:8px;overflow:hidden;display:grid;place-items:center;height:min(40vh,320px)}
+.viewer img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.nav{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:0;background:rgba(20,24,27,.6);color:#fff;display:grid;place-items:center}
+.nav.l{left:8px}.nav.r{right:8px}
+.nav:disabled{opacity:.25}
+.pos{font-family:var(--f-data);font-size:12px;color:var(--muted)}
+.row-actions{display:flex;flex-wrap:wrap;gap:8px}
+.layouts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.lay{border:1.5px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 6px 8px;display:grid;gap:8px;justify-items:center;font-size:12px;font-weight:600}
+.lay.on{border-color:var(--ink);background:var(--accent-soft)}
+.lay small{font-weight:400;color:var(--muted)}
+.mini{width:44px;aspect-ratio:210/297;background:#fff;border:1px solid #9AA4A9;padding:3px;display:grid;gap:2px}
+.mini i{display:block;background:#B9C1B5}
+.mini.side{grid-template-rows:repeat(3,1fr)} .mini.side i{background:linear-gradient(90deg,#B9C1B5 62%,#fff 62%,#fff 64%,#E3E6E1 64%)}
+.mini.below{grid-template-rows:repeat(2,1fr)} .mini.below i{background:linear-gradient(#B9C1B5 70%,#E3E6E1 70%)}
+.mini.grid6{grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,1fr)} .mini.grid6 i{background:linear-gradient(#B9C1B5 75%,#E3E6E1 75%)}
+.previews{display:grid;gap:12px}
+.previews img{width:100%;border:1px solid var(--line);border-radius:4px;background:#fff;display:block}
+.progress{height:6px;background:var(--sunk);border-radius:3px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--accent);transition:width .2s}
+.note{font-size:13px;color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:999px;font-size:14px;max-width:calc(100% - 32px);text-align:center}
+.loading{display:grid;place-items:center;gap:10px;padding:60px 0;color:var(--muted)}
+.spin{width:26px;height:26px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation-duration:3s}}
+.hidden-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+</style>
+
+<div id="root"><div class="loading"><div class="spin"></div>불러오는 중</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/htm@3.1.1/dist/htm.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(function(){
+const {useState,useEffect,useMemo,useRef} = React;
+const html = htm.bind(React.createElement);
+
+/* ---------- helpers ---------- */
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+const pad = n => String(n).padStart(2,'0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const today = () => ymd(new Date());
+const dotDate = s => s ? s.replace(/-/g,'.') : '';
+const STAGES = ['시공전','시공중','시공후'];
+const TRADES = ['건축','인테리어','전기','설비','소방','통신','기계','조경','토목','철거','도장','방수'];
+
+/* ---------- storage: account (db + assets) or this device (IndexedDB) ---------- */
+function cloudStore(col, assets){
+  return {
+    mode:'cloud',
+    subscribe(fn, onErr){ return col.onSnapshot(s => fn(s.docs.map(d => ({...d.data(), id:d.id}))), e => onErr && onErr(e)); },
+    put(rec){ const {id, ...data} = rec; return col.doc(id).set(data); },
+    del(id){ return col.doc(id).delete(); },
+    async addBlob(blob){ const r = await assets.upload(blob, {type:'image/jpeg'}); return r.id; },
+    async delBlob(aid){ try{ await assets.delete(aid); }catch(e){} },
+    urlSync(aid){ return '/_blob/' + aid; },
+    async url(aid){ return '/_blob/' + aid; }
+  };
+}
+function openIDB(){
+  return new Promise((res, rej) => {
+    try{
+      const r = indexedDB.open('site-photo-log', 1);
+      r.onupgradeneeded = () => { r.result.createObjectStore('recs', {keyPath:'id'}); r.result.createObjectStore('blobs'); };
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    }catch(e){ rej(e); }
+  });
+}
+async function localStore(){
+  let db = null; try{ db = await openIDB(); }catch(e){}
+  const mem = {recs:new Map(), blobs:new Map()}, urls = new Map(); let listener = null;
+  const tx = (store, mode, op) => new Promise((res, rej) => {
+    const t = db.transaction(store, mode); const req = op(t.objectStore(store));
+    t.oncomplete = () => res(req && req.result); t.onerror = () => rej(t.error);
+  });
+  const all = async () => db ? (await tx('recs','readonly', s => s.getAll())) : [...mem.recs.values()];
+  const emit = async () => { if(listener) listener(await all()); };
+  return {
+    mode: db ? 'local' : 'memory',
+    subscribe(fn){ listener = fn; emit(); return () => { listener = null; }; },
+    async put(rec){ if(db) await tx('recs','readwrite', s => s.put(rec)); else mem.recs.set(rec.id, rec); emit(); },
+    async del(id){ if(db) await tx('recs','readwrite', s => s.delete(id)); else mem.recs.delete(id); emit(); },
+    async addBlob(blob){ const id = uid(); if(db) await tx('blobs','readwrite', s => s.put(blob, id)); else mem.blobs.set(id, blob); urls.set(id, URL.createObjectURL(blob)); return id; },
+    async delBlob(id){ if(db) await tx('blobs','readwrite', s => s.delete(id)); else mem.blobs.delete(id); },
+    urlSync(id){ return urls.get(id) || null; },
+    async url(id){
+      if(urls.has(id)) return urls.get(id);
+      const b = db ? await tx('blobs','readonly', s => s.get(id)) : mem.blobs.get(id);
+      if(!b) return null; const u = URL.createObjectURL(b); urls.set(id, u); return u;
+    }
+  };
+}
+async function initStore(){
+  const use = n => (window.claude && window.claude.use) ? window.claude.use(n).catch(() => null) : Promise.resolve(null);
+  const [db, assets, user] = await Promise.all([use('db'), use('assets'), use('user')]);
+  if(db && assets && user){
+    try{ const id = await user.id(); if(id) return cloudStore(db.collection('data/users/' + id), assets); }catch(e){}
+  }
+  return localStore();
+}
+
+/* ---------- image prep ---------- */
+function loadImg(src){ return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
+async function prepImage(file){
+  let src;
+  try{ src = await createImageBitmap(file, {imageOrientation:'from-image'}); }
+  catch(e){ const u = URL.createObjectURL(file); src = await loadImg(u); }
+  const iw = src.width || src.naturalWidth, ih = src.height || src.naturalHeight;
+  const s = Math.min(1, 1800 / Math.max(iw, ih));
+  const w = Math.round(iw * s), h = Math.round(ih * s);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  c.getContext('2d').drawImage(src, 0, 0, w, h);
+  if(src.close) src.close();
+  const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.86));
+  return {blob, w, h};
+}
+async function bitmapFrom(url){
+  try{ const b = await (await fetch(url)).blob(); return await createImageBitmap(b); }
+  catch(e){ return await loadImg(url); }
+}
+
+/* ---------- PDF rendering (canvas pages → jsPDF) ---------- */
+const PW = 1240, PH = 1754, S = 1.5, M = 70;
+const FONT = '"IBM Plex Sans KR","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+const INK = '#111417', LABEL_BG = '#EEF0EC';
+async function fontsReady(){
+  try{ await Promise.all([document.fonts.load(`700 40px ${FONT}`,'현장'), document.fonts.load(`500 24px ${FONT}`,'공종'), document.fonts.load(`400 24px ${FONT}`,'내용')]); }catch(e){}
+}
+function fit(g, t, w){ t = String(t || ''); if(g.measureText(t).width <= w) return t; while(t && g.measureText(t + '…').width > w) t = t.slice(0, -1); return t + '…'; }
+function wrap(g, text, w, maxLines){
+  const out = [];
+  for(const para of String(text || '').split('\n')){
+    let line = '';
+    for(const ch of para){ if(line && g.measureText(line + ch).width > w){ out.push(line); line = ch.trim() ? ch : ''; } else line += ch; }
+    out.push(line);
+  }
+  if(out.length > maxLines){ const k = out.slice(0, maxLines); k[maxLines-1] = fit(g, k[maxLines-1] + '        ', w).replace(/\s+…$/,'…'); return k; }
+  return out;
+}
+function cellLabel(g, x, y, w, h, label){
+  g.fillStyle = LABEL_BG; g.fillRect(x, y, w, h);
+  g.fillStyle = INK; g.font = `600 22px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(label, x + w/2, y + h/2); g.textAlign = 'left';
+}
+function cellText(g, x, y, w, h, text, size){
+  g.fillStyle = INK; g.font = `400 ${size||22}px ${FONT}`; g.textBaseline = 'middle';
+  g.fillText(fit(g, text, w - 24), x + 12, y + h/2);
+}
+function box(g, x, y, w, h, lw){ g.lineWidth = lw || 1.5; g.strokeStyle = INK; g.strokeRect(x, y, w, h); }
+function hline(g, x1, x2, y){ g.beginPath(); g.moveTo(x1, y); g.lineTo(x2, y); g.lineWidth = 1.5; g.strokeStyle = INK; g.stroke(); }
+function vline(g, x, y1, y2){ g.beginPath(); g.moveTo(x, y1); g.lineTo(x, y2); g.lineWidth = 1.5; g.strokeStyle = INK; g.stroke(); }
+function drawPhoto(g, img, x, y, w, h, mode, no){
+  g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip();
+  g.fillStyle = '#F1F2F0'; g.fillRect(x, y, w, h);
+  if(img){
+    const iw = img.width || img.naturalWidth, ih = img.height || img.naturalHeight;
+    const s = mode === 'contain' ? Math.min(w/iw, h/ih) : Math.max(w/iw, h/ih);
+    g.drawImage(img, x + (w - iw*s)/2, y + (h - ih*s)/2, iw*s, ih*s);
+  }
+  if(no){
+    g.font = `500 18px ${FONT}`; const t = 'No. ' + no; const tw = g.measureText(t).width;
+    g.fillStyle = 'rgba(255,255,255,.88)'; g.fillRect(x + 10, y + 10, tw + 16, 30);
+    g.fillStyle = INK; g.textBaseline = 'middle'; g.fillText(t, x + 18, y + 25);
+  }
+  g.restore(); box(g, x, y, w, h);
+}
+function drawHeader(g, site, title, page, pages){
+  g.fillStyle = INK; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+  g.font = `700 44px ${FONT}`;
+  const t = (title || '현장 사진대지').split('').join(' ');
+  g.fillText(t, PW/2, M + 42);
+  g.textAlign = 'left';
+  const y = M + 72, rh = 46, x = M, w = PW - 2*M, lw = 130, lw2 = 110;
+  const c1 = x + lw, c3 = x + w - lw2 - 220, c4 = c3 + lw2;
+  box(g, x, y, w, rh*2, 2); hline(g, x, x + w, y + rh);
+  vline(g, c1, y, y + rh*2); vline(g, c3, y, y + rh*2); vline(g, c4, y, y + rh*2);
+  cellLabel(g, x+1, y+1, lw-2, rh-2, '공 사 명'); cellText(g, c1, y, c3 - c1, rh, site.name);
+  cellLabel(g, c3+1, y+1, lw2-2, rh-2, '쪽'); cellText(g, c4, y, x + w - c4, rh, `${page} / ${pages}`);
+  cellLabel(g, x+1, y+rh+1, lw-2, rh-2, '발 주 처'); cellText(g, c1, y + rh, c3 - c1, rh, site.client || '');
+  cellLabel(g, c3+1, y+rh+1, lw2-2, rh-2, '시 공 사'); cellText(g, c4, y + rh, x + w - c4, rh, site.contractor || '');
+  return y + rh*2 + 26;
+}
+function drawFooter(g, page){
+  g.fillStyle = '#5B656B'; g.font = `400 18px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+  g.fillText(`- ${page} -`, PW/2, PH - M + 30); g.textAlign = 'left';
+}
+function blockSide(g, p, img, x, y, w, h, mode, no){
+  const pw = Math.round(w * 0.63), tx = x + pw, tw = w - pw, lw = 96, rh = 54;
+  drawPhoto(g, img, x, y, pw, h, mode, no);
+  box(g, tx, y, tw, h, 1.5); vline(g, tx + lw, y, y + h);
+  const rows = [['공 종', p.trade], ['위 치', p.location], ['공 정', p.stage], ['일 자', dotDate(p.date)]];
+  rows.forEach((r, i) => { const ry = y + i*rh; cellLabel(g, tx+1, ry+1, lw-2, rh-2, r[0]); cellText(g, tx + lw, ry, tw - lw, rh, r[1]); hline(g, tx, tx + tw, ry + rh); });
+  const ny = y + rows.length*rh, nh = h - rows.length*rh;
+  cellLabel(g, tx+1, ny+1, lw-2, nh-2, '내 용');
+  g.font = `400 21px ${FONT}`; g.fillStyle = INK; g.textBaseline = 'top';
+  const lines = wrap(g, p.note, tw - lw - 24, Math.max(1, Math.floor((nh - 20) / 31)));
+  lines.forEach((l, i) => g.fillText(l, tx + lw + 12, ny + 12 + i*31));
+}
+function blockBelow(g, p, img, x, y, w, h, mode, no){
+  const rh = 50, th = rh*3, ph = h - th, lw = 110, half = w/2;
+  drawPhoto(g, img, x, y, w, ph, mode, no);
+  const ty = y + ph; box(g, x, ty, w, th, 1.5);
+  hline(g, x, x + w, ty + rh); hline(g, x, x + w, ty + rh*2);
+  vline(g, x + lw, ty, ty + th); vline(g, x + half, ty, ty + rh*2); vline(g, x + half + lw, ty, ty + rh*2);
+  cellLabel(g, x+1, ty+1, lw-2, rh-2, '공 종'); cellText(g, x + lw, ty, half - lw, rh, p.trade);
+  cellLabel(g, x+half+1, ty+1, lw-2, rh-2, '위 치'); cellText(g, x + half + lw, ty, half - lw, rh, p.location);
+  cellLabel(g, x+1, ty+rh+1, lw-2, rh-2, '공 정'); cellText(g, x + lw, ty + rh, half - lw, rh, p.stage);
+  cellLabel(g, x+half+1, ty+rh+1, lw-2, rh-2, '일 자'); cellText(g, x + half + lw, ty + rh, half - lw, rh, dotDate(p.date));
+  cellLabel(g, x+1, ty+rh*2+1, lw-2, rh-2, '내 용'); cellText(g, x + lw, ty + rh*2, w - lw, rh, (p.note || '').replace(/\n/g,' '), 21);
+}
+function blockGrid(g, p, img, x, y, w, h, mode, no){
+  const ch = 82, ph = h - ch;
+  drawPhoto(g, img, x, y, w, ph, mode, no);
+  box(g, x, y + ph, w, ch, 1.5);
+  g.fillStyle = INK; g.textBaseline = 'top';
+  g.font = `600 21px ${FONT}`; g.fillText(fit(g, [p.trade, p.location].filter(Boolean).join(' · ') || '공종·위치 미입력', w - 24), x + 12, y + ph + 12);
+  g.font = `400 19px ${FONT}`; g.fillStyle = '#3B4247';
+  g.fillText(fit(g, [p.stage, dotDate(p.date), (p.note || '').replace(/\n/g,' ')].filter(Boolean).join(' · '), w - 24), x + 12, y + ph + 46);
+}
+async function renderPages(site, photos, opts, urlOf, onProgress){
+  await fontsReady();
+  const per = {side:3, below:2, grid6:6}[opts.layout];
+  const groups = []; for(let i = 0; i < photos.length; i += per) groups.push(photos.slice(i, i + per));
+  const out = [];
+  for(let pi = 0; pi < groups.length; pi++){
+    const c = document.createElement('canvas'); c.width = PW*S; c.height = PH*S;
+    const g = c.getContext('2d'); g.scale(S, S);
+    g.fillStyle = '#fff'; g.fillRect(0, 0, PW, PH);
+    const top = drawHeader(g, site, opts.title, pi + 1, groups.length);
+    const bottom = PH - M - 10, gap = 22, W = PW - 2*M;
+    const imgs = await Promise.all(groups[pi].map(async p => { try{ const u = await urlOf(p.asset); return u ? await bitmapFrom(u) : null; }catch(e){ return null; } }));
+    groups[pi].forEach((p, k) => {
+      const no = pi*per + k + 1;
+      if(opts.layout === 'grid6'){
+        const cw = (W - gap)/2, chh = (bottom - top - gap*2)/3;
+        blockGrid(g, p, imgs[k], M + (k%2)*(cw + gap), top + Math.floor(k/2)*(chh + gap), cw, chh, opts.fit, no);
+      } else {
+        const n = per, bh = (bottom - top - gap*(n-1))/n;
+        (opts.layout === 'side' ? blockSide : blockBelow)(g, p, imgs[k], M, top + k*(bh + gap), W, bh, opts.fit, no);
+      }
+    });
+    imgs.forEach(i => i && i.close && i.close());
+    drawFooter(g, pi + 1);
+    out.push(c.toDataURL('image/jpeg', 0.88));
+    onProgress && onProgress((pi + 1) / groups.length);
+    await new Promise(r => setTimeout(r, 0));
+  }
+  return out;
+}
+
+/* ---------- small UI pieces ---------- */
+const Icon = {
+  camera: html`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`,
+  album: html`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 16 5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.5"/></svg>`,
+  pdf: html`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 13h6M9 17h6"/></svg>`,
+  back: html`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5-7 7 7 7"/></svg>`,
+  close: html`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>`,
+  edit: html`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>`,
+  plus: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`,
+  left: html`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5-7 7 7 7"/></svg>`,
+  right: html`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg>`,
+  check: html`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#14181B" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>`,
+  mark: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14181B" stroke-width="2.2" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18"/><path d="M4 9h16M10 9v12"/></svg>`
+};
+function usePhotoUrl(store, aid){
+  const [u, setU] = useState(() => aid ? store.urlSync(aid) : null);
+  useEffect(() => { let on = true; if(aid){ const s = store.urlSync(aid); if(s) setU(s); else store.url(aid).then(x => on && setU(x)); } return () => { on = false; }; }, [aid]);
+  return u;
+}
+function Photo({store, aid, alt}){
+  const u = usePhotoUrl(store, aid);
+  return u ? html`<img src=${u} alt=${alt || ''} loading="lazy" />` : null;
+}
+const sheetStack = [];
+const NATIVE = window.SiteNative || null;
+function Sheet({title, onClose, children, foot, right}){
+  const closeRef = useRef(onClose); closeRef.current = onClose;
+  useEffect(() => { const fn = () => closeRef.current(); sheetStack.push(fn); return () => { const i = sheetStack.indexOf(fn); if(i >= 0) sheetStack.splice(i, 1); }; }, []);
+  useEffect(() => { const k = e => { if(e.key === 'Escape') onClose(); }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [onClose]);
+  return html`<div class="scrim" onClick=${e => { if(e.target === e.currentTarget) onClose(); }}>
+    <div class="sheet" role="dialog" aria-modal="true" aria-label=${title}>
+      <div class="sheet-head"><h2>${title}</h2>${right}<button class="icon-btn" aria-label="닫기" onClick=${onClose}>${Icon.close}</button></div>
+      <div class="sheet-body">${children}</div>
+      ${foot && html`<div class="sheet-foot">${foot}</div>`}
+    </div></div>`;
+}
+function Suggest({values, onPick, current}){
+  if(!values.length) return null;
+  return html`<div class="sugg">${values.map(v => html`<button type="button" key=${v} class=${'chip' + (v === current ? ' on' : '')} onClick=${() => onPick(v)}>${v}</button>`)}</div>`;
+}
+function StageSeg({value, onChange, allowKeep}){
+  const opts = allowKeep ? ['그대로', ...STAGES] : ['없음', ...STAGES];
+  const cur = value === null ? '그대로' : (value || '없음');
+  return html`<div class="seg" role="radiogroup">${opts.map(o => html`<button type="button" key=${o} role="radio" aria-checked=${cur === o} class=${cur === o ? 'on' : ''}
+    onClick=${() => onChange(o === '그대로' ? null : o === '없음' ? '' : o)}>${o}</button>`)}</div>`;
+}
+
+/* ---------- sheets ---------- */
+function SiteForm({site, onSave, onDelete, onClose}){
+  const [f, setF] = useState(() => site || {name:'', client:'', contractor:'', address:'', start:'', end:''});
+  const set = k => e => setF({...f, [k]: e.target.value});
+  const ok = f.name.trim().length > 0;
+  return html`<${Sheet} title=${site ? '현장 정보 수정' : '새 현장'} onClose=${onClose}
+    foot=${html`${site && html`<button class="btn danger" onClick=${onDelete}>현장 삭제</button>`}<button class="btn primary" disabled=${!ok} onClick=${() => onSave({...f, name:f.name.trim()})}>${site ? '저장' : '현장 만들기'}</button>`}>
+    <div class="field"><label for="sf-name">공사명</label><input id="sf-name" class="inp" value=${f.name} onChange=${set('name')} placeholder="예: OO빌딩 3층 사무실 인테리어 공사" autoFocus /></div>
+    <div class="two">
+      <div class="field"><label for="sf-client">발주처 <span class="opt">선택</span></label><input id="sf-client" class="inp" value=${f.client} onChange=${set('client')} /></div>
+      <div class="field"><label for="sf-con">시공사 <span class="opt">선택</span></label><input id="sf-con" class="inp" value=${f.contractor} onChange=${set('contractor')} /></div>
+    </div>
+    <div class="field"><label for="sf-addr">현장 주소 <span class="opt">선택</span></label><input id="sf-addr" class="inp" value=${f.address} onChange=${set('address')} /></div>
+    <div class="two">
+      <div class="field"><label for="sf-start">공사 시작일</label><input id="sf-start" type="date" class="inp" value=${f.start} onChange=${set('start')} /></div>
+      <div class="field"><label for="sf-end">공사 종료일</label><input id="sf-end" type="date" class="inp" value=${f.end} onChange=${set('end')} /></div>
+    </div>
+    <p class="note">공사명·발주처·시공사는 사진대지 PDF 맨 위 표에 들어가요.</p>
+  <//>`;
+}
+
+function PhotoEditor({store, photos, startId, recentTrades, recentLocs, onSave, onMove, onDelete, onClose}){
+  const [id, setId] = useState(startId);
+  const idx = photos.findIndex(p => p.id === id);
+  const p = photos[idx];
+  const [d, setD] = useState(p);
+  useEffect(() => { if(p) setD(p); }, [id]);
+  if(!p) return null;
+  const dirty = ['trade','location','stage','date','note'].some(k => (d[k] || '') !== (p[k] || ''));
+  const commit = () => { if(dirty) onSave(d); };
+  const go = j => { commit(); setId(photos[j].id); };
+  const set = k => e => setD({...d, [k]: e.target.value});
+  const close = () => { commit(); onClose(); };
+  return html`<${Sheet} title=${'사진 정보'} onClose=${close} right=${html`<span class="pos">No. ${idx+1} / ${photos.length}</span>`}
+    foot=${html`<button class="btn danger" onClick=${() => onDelete(p)}>삭제</button><button class="btn primary" onClick=${close}>완료</button>`}>
+    <div class="viewer">
+      <${Photo} store=${store} aid=${p.asset} alt=${'사진 ' + (idx+1)} />
+      <button class="nav l" aria-label="이전 사진" disabled=${idx <= 0} onClick=${() => go(idx-1)}>${Icon.left}</button>
+      <button class="nav r" aria-label="다음 사진" disabled=${idx >= photos.length-1} onClick=${() => go(idx+1)}>${Icon.right}</button>
+    </div>
+    <div class="field"><label for="pe-trade">공종</label>
+      <input id="pe-trade" class="inp" value=${d.trade || ''} onChange=${set('trade')} placeholder="예: 전기" />
+      <${Suggest} values=${recentTrades} current=${d.trade} onPick=${v => setD({...d, trade:v})} /></div>
+    <div class="field"><label for="pe-loc">위치</label>
+      <input id="pe-loc" class="inp" value=${d.location || ''} onChange=${set('location')} placeholder="예: 3층 복도" />
+      <${Suggest} values=${recentLocs} current=${d.location} onPick=${v => setD({...d, location:v})} /></div>
+    <div class="field"><label>공정</label><${StageSeg} value=${d.stage || ''} onChange=${v => setD({...d, stage:v})} /></div>
+    <div class="field"><label for="pe-date">촬영일</label><input id="pe-date" type="date" class="inp" value=${d.date || ''} onChange=${set('date')} /></div>
+    <div class="field"><label for="pe-note">내용 <span class="opt">PDF 내용 칸에 들어가요</span></label><textarea id="pe-note" class="inp" value=${d.note || ''} onChange=${set('note')} placeholder="예: 천장 배관 설치 상태 확인"></textarea></div>
+    <div class="row-actions">
+      <button class="btn" disabled=${idx <= 0} onClick=${() => { commit(); onMove(p, -1); }}>순서 앞으로</button>
+      <button class="btn" disabled=${idx >= photos.length-1} onClick=${() => { commit(); onMove(p, 1); }}>순서 뒤로</button>
+    </div>
+  <//>`;
+}
+
+function BatchEdit({count, recentTrades, recentLocs, onApply, onClose}){
+  const [trade, setTrade] = useState(''); const [loc, setLoc] = useState('');
+  const [stage, setStage] = useState(null); const [date, setDate] = useState('');
+  return html`<${Sheet} title=${`${count}장 한꺼번에 수정`} onClose=${onClose}
+    foot=${html`<button class="btn primary" onClick=${() => onApply({trade, location:loc, stage, date})}>적용</button>`}>
+    <p class="note">비워 둔 칸은 바꾸지 않아요.</p>
+    <div class="field"><label for="be-trade">공종</label><input id="be-trade" class="inp" value=${trade} onChange=${e => setTrade(e.target.value)} /><${Suggest} values=${recentTrades} current=${trade} onPick=${setTrade} /></div>
+    <div class="field"><label for="be-loc">위치</label><input id="be-loc" class="inp" value=${loc} onChange=${e => setLoc(e.target.value)} /><${Suggest} values=${recentLocs} current=${loc} onPick=${setLoc} /></div>
+    <div class="field"><label>공정</label><${StageSeg} value=${stage} allowKeep=${true} onChange=${setStage} /></div>
+    <div class="field"><label for="be-date">촬영일</label><input id="be-date" type="date" class="inp" value=${date} onChange=${e => setDate(e.target.value)} /></div>
+  <//>`;
+}
+
+function ExportSheet({store, site, photos, selected, onClose, toast}){
+  const [layout, setLayout] = useState('side');
+  const [fitMode, setFit] = useState('cover');
+  const [range, setRange] = useState(selected.length ? 'sel' : 'all');
+  const [title, setTitle] = useState('현장 사진대지');
+  const [busy, setBusy] = useState(0); const [pages, setPages] = useState(null);
+  const [downloads, setDl] = useState(undefined);
+  useEffect(() => { if(NATIVE) return; (window.claude && window.claude.use ? window.claude.use('downloads').catch(() => null) : Promise.resolve(null)).then(setDl); }, []);
+  const list = range === 'sel' ? photos.filter(p => selected.includes(p.id)) : STAGES.includes(range) ? photos.filter(p => p.stage === range) : photos;
+  const per = {side:3, below:2, grid6:6}[layout];
+  const reset = fn => v => { fn(v); setPages(null); };
+  async function build(){
+    if(!list.length) return;
+    setBusy(0.01); setPages(null);
+    try{ const out = await renderPages(site, list, {layout, fit:fitMode, title}, aid => store.url(aid), v => setBusy(Math.max(.02, v))); setPages(out); }
+    catch(e){ toast('PDF를 만들지 못했어요. 사진 수를 줄여서 다시 해 보세요.'); }
+    setBusy(0);
+  }
+  const makePdf = () => {
+    const pdf = new window.jspdf.jsPDF({unit:'mm', format:'a4', compress:true});
+    pages.forEach((u, i) => { if(i) pdf.addPage(); pdf.addImage(u, 'JPEG', 0, 0, 210, 297, undefined, 'FAST'); });
+    return pdf;
+  };
+  const fileName = () => `${(site.name || '현장').replace(/[\\/:*?"<>|]/g,' ').trim()}_사진대지_${today().replace(/-/g,'')}.pdf`;
+  function nativeOut(kind){
+    const b64 = makePdf().output('datauristring').split(',')[1];
+    const r = kind === 'share' ? NATIVE.sharePdf(b64, fileName()) : NATIVE.savePdf(b64, fileName());
+    if(kind === 'save') toast(r && r.startsWith('ok') ? `저장했어요 · ${r.slice(3)}` : 'PDF를 저장하지 못했어요');
+    else if(!(r && r.startsWith('ok'))) toast('공유하지 못했어요');
+  }
+  async function save(){
+    const pdf = makePdf(); const name = fileName();
+    try{ await downloads.save({filename:name, data:pdf.output('blob')}); toast('PDF를 저장했어요'); }
+    catch(e){ if(e && e.code === 'declined') return; if(e && e.code === 'rate_limited') toast('저장 창이 이미 열려 있어요'); else toast('이 화면에서는 파일 저장을 쓸 수 없어요'); }
+  }
+  const stageCounts = STAGES.map(s => [s, photos.filter(p => p.stage === s).length]).filter(x => x[1]);
+  return html`<${Sheet} title="사진대지 PDF" onClose=${onClose}
+    foot=${pages ? (NATIVE ? html`<button class="btn" onClick=${() => setPages(null)}>설정</button><button class="btn" onClick=${() => nativeOut('share')}>공유</button><button class="btn primary" onClick=${() => nativeOut('save')}>${Icon.pdf} 저장</button>`
+        : html`<button class="btn" onClick=${() => setPages(null)}>설정 바꾸기</button><button class="btn primary" disabled=${!downloads} onClick=${save}>${Icon.pdf} PDF 저장</button>`)
+      : html`<button class="btn primary" disabled=${!list.length || busy > 0} onClick=${build}>${busy ? '만드는 중…' : `미리보기 만들기 · ${Math.ceil(list.length / per)}쪽`}</button>`}>
+    ${pages ? html`
+      ${!NATIVE && downloads === null && html`<p class="note">이 화면에서는 파일 저장을 쓸 수 없어요. claude.ai 앱이나 웹에서 열어 주세요.</p>`}
+      <div class="previews">${pages.map((u, i) => html`<img key=${i} src=${u} alt=${`${i+1}쪽 미리보기`} />`)}</div>`
+    : html`
+      <div class="field"><label>양식</label>
+        <div class="layouts">
+          ${[['side','3장','사진 옆에 표'],['below','2장','사진 아래 표'],['grid6','6장','격자형']].map(([k, a, b]) => html`
+            <button type="button" key=${k} class=${'lay' + (layout === k ? ' on' : '')} aria-pressed=${layout === k} onClick=${() => reset(setLayout)(k)}>
+              <span class=${'mini ' + k}>${Array.from({length:{side:3,below:2,grid6:6}[k]}, (_, i) => html`<i key=${i}></i>`)}</span>
+              <span>쪽당 ${a}</span><small>${b}</small></button>`)}
+        </div></div>
+      <div class="field"><label>넣을 사진</label>
+        <div class="sugg">
+          <button type="button" class=${'chip' + (range === 'all' ? ' on' : '')} onClick=${() => setRange('all')}>전체 <span class="n">${photos.length}</span></button>
+          ${selected.length > 0 && html`<button type="button" class=${'chip' + (range === 'sel' ? ' on' : '')} onClick=${() => setRange('sel')}>선택한 사진 <span class="n">${selected.length}</span></button>`}
+          ${stageCounts.map(([s, n]) => html`<button type="button" key=${s} class=${'chip' + (range === s ? ' on' : '')} onClick=${() => setRange(s)}>${s} <span class="n">${n}</span></button>`)}
+        </div></div>
+      <div class="field"><label>사진 맞춤</label>
+        <div class="seg" style=${{gridTemplateColumns:'1fr 1fr'}}>
+          <button type="button" class=${fitMode === 'cover' ? 'on' : ''} onClick=${() => setFit('cover')}>칸에 꽉 채우기</button>
+          <button type="button" class=${fitMode === 'contain' ? 'on' : ''} onClick=${() => setFit('contain')}>잘리지 않게</button>
+        </div></div>
+      <div class="field"><label for="ex-title">문서 제목</label><input id="ex-title" class="inp" value=${title} onChange=${e => setTitle(e.target.value)} /></div>
+      ${busy > 0 && html`<div class="progress" aria-label="진행률"><i style=${{width: Math.round(busy*100) + '%'}}></i></div>`}
+      <p class="note">A4 세로 · 사진 순서대로 No.가 붙어요.</p>`}
+  <//>`;
+}
+
+function Confirm({title, body, action, onYes, onClose}){
+  return html`<${Sheet} title=${title} onClose=${onClose}
+    foot=${html`<button class="btn" onClick=${onClose}>취소</button><button class="btn primary" style=${{background:'var(--danger)', borderColor:'var(--danger)', color:'#fff'}} onClick=${onYes}>${action}</button>`}>
+    <p style=${{margin:0}}>${body}</p><//>`;
+}
+
+/* ---------- screens ---------- */
+function SiteList({store, sites, photosBy, onOpen, onNew}){
+  if(!sites.length) return html`<div class="empty">
+    <div class="sheet-mock" aria-hidden="true"><div class="t"></div>${[0,1,2].map(i => html`<div class="row" key=${i}><div class="ph"></div><div class="tb"><i></i><i></i><i></i><i></i></div></div>`)}</div>
+    <h2>현장을 만들고 사진을 찍어 보세요</h2>
+    <p>사진마다 공종·위치·공정·내용을 적어 두면 A4 사진대지 PDF로 바로 만들어져요.</p>
+    <button class="btn primary" onClick=${onNew}>${Icon.plus} 첫 현장 만들기</button></div>`;
+  return html`<div>
+    <div class="section-label">현장 ${sites.length}곳</div>
+    <div class="sites">${sites.map(s => {
+      const ps = photosBy[s.id] || []; const cover = ps[ps.length - 1];
+      return html`<button class="site" key=${s.id} onClick=${() => onOpen(s.id)}>
+        <div class="thumb">${cover ? html`<${Photo} store=${store} aid=${cover.asset} />` : Icon.camera}</div>
+        <div class="site-body">
+          <div class="site-name">${s.name}</div>
+          <div class="site-sub">${[s.client, s.address].filter(Boolean).join(' · ') || '발주처·주소 미입력'}</div>
+          <div class="meta"><span class="tag">사진 <b>${ps.length}</b>장</span>
+            ${(s.start || s.end) && html`<span class="tag">${dotDate(s.start)} ~ ${dotDate(s.end)}</span>`}</div>
+        </div></button>`; })}
+    </div></div>`;
+}
+
+function SiteScreen({store, site, photos, filter, setFilter, selectMode, selected, toggleSel, onOpenPhoto}){
+  const counts = Object.fromEntries(STAGES.map(s => [s, photos.filter(p => p.stage === s).length]));
+  const shown = filter === 'all' ? photos : photos.filter(p => p.stage === filter);
+  const numberOf = useMemo(() => Object.fromEntries(photos.map((p, i) => [p.id, i + 1])), [photos]);
+  return html`<div>
+    <div class="site-head">
+      <div class="sub">${[site.client && '발주처 ' + site.client, site.contractor && '시공사 ' + site.contractor].filter(Boolean).join(' · ')}</div>
+      ${(site.address || site.start) && html`<div class="sub">${[site.address, (site.start || site.end) && `${dotDate(site.start)} ~ ${dotDate(site.end)}`].filter(Boolean).join(' · ')}</div>`}
+    </div>
+    <div class="filters" role="tablist">
+      <button class=${'chip' + (filter === 'all' ? ' on' : '')} onClick=${() => setFilter('all')}>전체 <span class="n">${photos.length}</span></button>
+      ${STAGES.map(s => html`<button key=${s} class=${'chip' + (filter === s ? ' on' : '')} onClick=${() => setFilter(s)}>${s} <span class="n">${counts[s]}</span></button>`)}
+    </div>
+    ${shown.length ? html`<div class="grid">${shown.map(p => html`
+      <button key=${p.id} class=${'tile' + (selected.includes(p.id) ? ' sel' : '')} onClick=${() => selectMode ? toggleSel(p.id) : onOpenPhoto(p.id)}
+        aria-label=${`사진 ${numberOf[p.id]} ${p.trade || ''} ${p.location || ''}`}>
+        <div class="img"><${Photo} store=${store} aid=${p.asset} />
+          <span class="no">No.${numberOf[p.id]}</span>
+          ${p.stage && html`<span class=${'stage st-' + p.stage}>${p.stage}</span>`}
+          ${selectMode && html`<span class="check">${selected.includes(p.id) && Icon.check}</span>`}</div>
+        <div class="cap"><b>${[p.trade, p.location].filter(Boolean).join(' · ') || html`<span class="muted-i">정보 입력 전</span>`}</b>
+          <span>${[dotDate(p.date), p.note].filter(Boolean).join(' · ')}</span></div>
+      </button>`)}</div>`
+    : html`<div class="hint">${photos.length ? `${filter} 사진이 없어요` : '아래 카메라 또는 앨범 버튼으로 사진을 추가하세요'}</div>`}
+  </div>`;
+}
+
+/* ---------- app ---------- */
+function App(){
+  const [store, setStore] = useState(null);
+  const [recs, setRecs] = useState(null);
+  const [err, setErr] = useState('');
+  const [screen, setScreen] = useState({name:'list'});
+  const [sheet, setSheet] = useState(null);
+  const [filter, setFilter] = useState('all');
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState([]);
+  const [toastMsg, setToastMsg] = useState('');
+  const toastT = useRef(null);
+  const camRef = useRef(null), albRef = useRef(null);
+  const toast = m => { setToastMsg(m); clearTimeout(toastT.current); toastT.current = setTimeout(() => setToastMsg(''), 2600); };
+
+  useEffect(() => {
+    let unsub = null, done = false;
+    const timer = setTimeout(() => { if(!done) setErr('저장소 연결이 늦어지고 있어요. 잠시 후 다시 열어 주세요.'); }, 12000);
+    initStore().then(s => { setStore(s); unsub = s.subscribe(list => { done = true; clearTimeout(timer); setErr(''); setRecs(list); }, e => { done = true; clearTimeout(timer); setErr('저장된 내용을 불러오지 못했어요.'); setRecs(r => r || []); }); });
+    return () => { unsub && unsub(); clearTimeout(timer); };
+  }, []);
+
+  const sites = useMemo(() => (recs || []).filter(r => r.kind === 'site').sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)), [recs]);
+  const photosBy = useMemo(() => { const m = {}; (recs || []).filter(r => r.kind === 'photo').forEach(p => (m[p.siteId] = m[p.siteId] || []).push(p)); Object.values(m).forEach(a => a.sort((x, y) => x.order - y.order)); return m; }, [recs]);
+  const site = screen.name === 'site' ? sites.find(s => s.id === screen.id) : null;
+  const photos = site ? (photosBy[site.id] || []) : [];
+  const uniq = (arr, base) => [...new Set([...arr.filter(Boolean).reverse(), ...(base || [])])].slice(0, 12);
+  const recentTrades = uniq(photos.map(p => p.trade), TRADES);
+  const recentLocs = uniq(photos.map(p => p.location));
+
+  useEffect(() => { if(screen.name === 'site' && recs && !site) setScreen({name:'list'}); }, [recs, site]);
+
+  const touchSite = s => store.put({...s, updatedAt: Date.now()});
+  async function saveSite(f){
+    const now = Date.now();
+    if(f.id){ await store.put({...f, kind:'site', updatedAt:now}); toast('저장했어요'); }
+    else { const id = uid(); await store.put({...f, id, kind:'site', createdAt:now, updatedAt:now}); setScreen({name:'site', id}); }
+    setSheet(null);
+  }
+  async function deleteSite(s){
+    const ps = photosBy[s.id] || [];
+    setSheet(null); setScreen({name:'list'});
+    for(const p of ps){ await store.del(p.id); store.delBlob(p.asset); }
+    await store.del(s.id); toast('현장을 삭제했어요');
+  }
+  async function addFiles(files, openAfter){
+    files = [...files].filter(f => f.type.startsWith('image/') || /\.(jpe?g|png|webp|heic)$/i.test(f.name));
+    if(!files.length || !site) return;
+    const last = photos[photos.length - 1] || {};
+    let order = (last.order || 0) + 1, added = [], fail = 0;
+    for(let i = 0; i < files.length; i++){
+      if(files.length > 1) toast(`사진 올리는 중 ${i + 1}/${files.length}`);
+      try{
+        const {blob, w, h} = await prepImage(files[i]);
+        const asset = await store.addBlob(blob);
+        const lm = files[i].lastModified ? new Date(files[i].lastModified) : new Date();
+        const rec = {id:uid(), kind:'photo', siteId:site.id, asset, w, h, order:order++, trade:last.trade || '', location:last.location || '', stage:last.stage || '', date:ymd(lm), note:'', createdAt:Date.now()};
+        await store.put(rec); added.push(rec);
+      }catch(e){ fail++; }
+    }
+    if(added.length) touchSite(site);
+    toast(fail ? `${added.length}장 추가, ${fail}장 실패` : `${added.length}장 추가했어요`);
+    if(openAfter && added.length === 1) setSheet({type:'photo', id:added[0].id});
+  }
+  const savePhoto = p => store.put(p);
+  async function movePhoto(p, dir){
+    const i = photos.findIndex(x => x.id === p.id), j = i + dir; if(j < 0 || j >= photos.length) return;
+    const q = photos[j];
+    await Promise.all([store.put({...p, order:q.order}), store.put({...q, order:p.order})]);
+  }
+  async function deletePhotos(ids){
+    for(const id of ids){ const p = photos.find(x => x.id === id); if(p){ await store.del(p.id); store.delBlob(p.asset); } }
+    setSelected([]); setSelectMode(false); setSheet(null); toast(`${ids.length}장 삭제했어요`);
+  }
+  async function batchApply(v){
+    const ps = photos.filter(p => selected.includes(p.id));
+    await Promise.all(ps.map(p => store.put({...p, ...(v.trade ? {trade:v.trade} : {}), ...(v.location ? {location:v.location} : {}), ...(v.stage !== null ? {stage:v.stage} : {}), ...(v.date ? {date:v.date} : {})})));
+    setSheet(null); setSelectMode(false); setSelected([]); toast(`${ps.length}장 수정했어요`);
+  }
+  const toggleSel = id => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
+  const openSite = id => { setScreen({name:'site', id}); setFilter('all'); setSelectMode(false); setSelected([]); window.scrollTo(0, 0); };
+
+  const backRef = useRef(null);
+  backRef.current = () => {
+    if(sheetStack.length){ sheetStack[sheetStack.length - 1](); return true; }
+    if(selectMode){ setSelectMode(false); setSelected([]); return true; }
+    if(screen.name === 'site'){ setScreen({name:'list'}); return true; }
+    return false;
+  };
+  useEffect(() => { window.__onBack = () => backRef.current(); }, []);
+
+  if(!recs) return html`<div class="loading"><div class="spin"></div>${err || '불러오는 중'}</div>`;
+
+  return html`<${React.Fragment}>
+    <header class="top"><div class="wrap">
+      ${site ? html`
+        <button class="icon-btn" aria-label="현장 목록으로" onClick=${() => { setScreen({name:'list'}); setSelectMode(false); setSelected([]); }}>${Icon.back}</button>
+        <h1>${site.name}</h1>
+        ${photos.length > 0 && html`<button class="btn ghost" onClick=${() => { setSelectMode(!selectMode); setSelected([]); }}>${selectMode ? '선택 끝' : '선택'}</button>`}
+        <button class="icon-btn" aria-label="현장 정보 수정" onClick=${() => setSheet({type:'site'})}>${Icon.edit}</button>`
+      : html`
+        <div class="brand"><span class="mark">${Icon.mark}</span>현장 사진대지</div>
+        <span class="spacer"></span>
+        ${!NATIVE && html`<span class="mode"><span class=${'dot' + (store.mode === 'cloud' ? '' : ' warn')}></span>${store.mode === 'cloud' ? '계정에 저장' : store.mode === 'local' ? '이 기기에만 저장' : '임시 저장'}</span>`}
+        ${sites.length > 0 && html`<button class="btn primary" onClick=${() => setSheet({type:'newsite'})}>${Icon.plus} 새 현장</button>`}`}
+    </div></header>
+
+    <main><div class="wrap">
+      ${err && html`<p class="note" role="status">${err}</p>`}
+      ${site ? html`<${SiteScreen} store=${store} site=${site} photos=${photos} filter=${filter} setFilter=${setFilter} selectMode=${selectMode} selected=${selected} toggleSel=${toggleSel} onOpenPhoto=${id => setSheet({type:'photo', id})} />`
+        : html`<${SiteList} store=${store} sites=${sites} photosBy=${photosBy} onOpen=${openSite} onNew=${() => setSheet({type:'newsite'})} />`}
+    </div></main>
+
+    ${site && html`<nav class="bar" aria-label="사진 작업"><div class="wrap">
+      ${selectMode ? html`
+        <span class="count">${selected.length}장</span>
+        <button class="btn" disabled=${!selected.length} onClick=${() => setSheet({type:'batch'})}>한꺼번에 수정</button>
+        <button class="btn" disabled=${!selected.length} onClick=${() => setSheet({type:'export'})}>${Icon.pdf} PDF</button>
+        <button class="btn danger" disabled=${!selected.length} onClick=${() => setSheet({type:'confirm-photos'})}>삭제</button>`
+      : html`
+        <button class="btn primary" onClick=${() => camRef.current.click()}>${Icon.camera} 카메라</button>
+        <button class="btn" onClick=${() => albRef.current.click()}>${Icon.album} 앨범</button>
+        <button class="btn" disabled=${!photos.length} onClick=${() => setSheet({type:'export'})}>${Icon.pdf} PDF</button>`}
+    </div></nav>`}
+    <input ref=${camRef} id="cam-input" class="hidden-input" type="file" accept="image/*" capture="environment" tabIndex="-1" aria-hidden="true" onChange=${e => { addFiles(e.target.files, true); e.target.value = ''; }} />
+    <input ref=${albRef} id="album-input" class="hidden-input" type="file" accept="image/*" multiple tabIndex="-1" aria-hidden="true" onChange=${e => { addFiles(e.target.files, false); e.target.value = ''; }} />
+
+    ${sheet && sheet.type === 'newsite' && html`<${SiteForm} onSave=${saveSite} onClose=${() => setSheet(null)} />`}
+    ${sheet && sheet.type === 'site' && site && html`<${SiteForm} site=${site} onSave=${saveSite} onDelete=${() => setSheet({type:'confirm-site'})} onClose=${() => setSheet(null)} />`}
+    ${sheet && sheet.type === 'confirm-site' && site && html`<${Confirm} title="현장 삭제" body=${`'${site.name}' 현장과 사진 ${photos.length}장을 모두 지워요. 되돌릴 수 없어요.`} action="삭제" onYes=${() => deleteSite(site)} onClose=${() => setSheet(null)} />`}
+    ${sheet && sheet.type === 'confirm-photos' && html`<${Confirm} title="사진 삭제" body=${`선택한 사진 ${selected.length}장을 지워요. 되돌릴 수 없어요.`} action="삭제" onYes=${() => deletePhotos(selected)} onClose=${() => setSheet(null)} />`}
+    ${sheet && sheet.type === 'confirm-photo' && html`<${Confirm} title="사진 삭제" body="이 사진을 지워요. 되돌릴 수 없어요." action="삭제" onYes=${() => deletePhotos([sheet.id])} onClose=${() => setSheet({type:'photo', id:sheet.id})} />`}
+    ${sheet && sheet.type === 'photo' && html`<${PhotoEditor} key="pe" store=${store} photos=${photos} startId=${sheet.id} recentTrades=${recentTrades} recentLocs=${recentLocs}
+        onSave=${savePhoto} onMove=${movePhoto} onDelete=${p => setSheet({type:'confirm-photo', id:p.id})} onClose=${() => setSheet(null)} />`}
+    ${sheet && sheet.type === 'batch' && html`<${BatchEdit} count=${selected.length} recentTrades=${recentTrades} recentLocs=${recentLocs} onApply=${batchApply} onClose=${() => setSheet(null)} />`}
+    ${sheet && sheet.type === 'export' && site && html`<${ExportSheet} store=${store} site=${site} photos=${photos} selected=${selectMode ? selected : []} toast=${toast} onClose=${() => setSheet(null)} />`}
+    ${toastMsg && html`<div class="toast" role="status">${toastMsg}</div>`}
+  <//>`;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(html`<${App} />`);
+})();
+</script>
