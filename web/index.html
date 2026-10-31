@@ -1,13 +1,14 @@
-<title>현장 사진대지</title>
+<title>상규 사진대지</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
 <style>
-/* Layout: one-column field app — sticky top bar, content list, fixed bottom action bar; sheets slide up from the bottom. */
+/* Layout: one-column field app — sticky top bar, content, fixed bottom action bar; sheets slide up from the bottom. */
 :root{
   --bg:#EEF0EC; --surface:#FFFFFF; --sunk:#E3E6E1; --ink:#1B2024; --muted:#5B656B; --line:#CDD2CC;
   --accent:#F0B400; --accent-ink:#1B2024; --accent-soft:#FFF1C2; --danger:#C2391F; --ok:#2F7A4B;
+  --warn:#D9730D; --warn-soft:#FDEBD6; --hero:#1F262B; --hero-ink:#F2F4F1;
   --pre:#5C6BC0; --mid:#E08A00; --post:#2F7A4B;
   --f-ui:"IBM Plex Sans KR","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
   --f-data:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
@@ -16,10 +17,12 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#14181B; --surface:#1D2226; --sunk:#262C31; --ink:#E8ECE9; --muted:#9AA4A9; --line:#323A40;
   --accent:#F4C21F; --accent-ink:#14181B; --accent-soft:#3A3217; --danger:#F07A5E; --ok:#6BC28C;
+  --warn:#F2A050; --warn-soft:#3A2A18; --hero:#2A3237; --hero-ink:#F2F4F1;
   --pre:#8F9BEA; --mid:#F2A73A; --post:#6BC28C; color-scheme:dark }}
 :root[data-theme="dark"]{
   --bg:#14181B; --surface:#1D2226; --sunk:#262C31; --ink:#E8ECE9; --muted:#9AA4A9; --line:#323A40;
   --accent:#F4C21F; --accent-ink:#14181B; --accent-soft:#3A3217; --danger:#F07A5E; --ok:#6BC28C;
+  --warn:#F2A050; --warn-soft:#3A2A18; --hero:#2A3237; --hero-ink:#F2F4F1;
   --pre:#8F9BEA; --mid:#F2A73A; --post:#6BC28C; color-scheme:dark }
 html,body{min-height:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent}
@@ -30,11 +33,11 @@ button{cursor:pointer}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .wrap{max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
-.top .wrap{display:flex;align-items:center;gap:10px;min-height:56px;padding-block:6px}
-.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:-.01em}
+.top .wrap{display:flex;align-items:center;gap:6px;min-height:56px;padding-block:6px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:-.01em;flex:1;min-width:0}
 .mark{width:28px;height:28px;border-radius:6px;background:var(--accent);display:grid;place-items:center;flex:none}
-.top h1{font-size:17px;margin:0;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-wrap:balance}
-.spacer{flex:1}
+.top h1{font-size:17px;margin:0;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .eyebrow{display:block;font-size:11px;font-weight:500;color:var(--muted)}
 .icon-btn{border:0;background:transparent;width:40px;height:40px;border-radius:8px;display:grid;place-items:center;flex:none}
 .icon-btn:hover{background:var(--sunk)}
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 14px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px}
@@ -43,63 +46,86 @@ button{cursor:pointer}
 .btn.primary:hover{filter:brightness(.96)}
 .btn.danger{color:var(--danger)}
 .btn.ghost{border-color:transparent;background:transparent}
+.btn.sm{min-height:36px;padding:6px 10px;font-size:13px}
+.btn.block{width:100%}
 .btn:disabled{opacity:.5;cursor:default}
-.mode{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.mode{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;white-space:nowrap}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
 .dot.warn{background:var(--mid)}
 main{padding-block:16px 112px}
-.section-label{font-size:12px;font-weight:600;letter-spacing:.06em;color:var(--muted);margin:4px 0 10px}
-/* site cards */
+.section-label{font-size:12px;font-weight:600;letter-spacing:.06em;color:var(--muted);margin:18px 0 10px}
+.stack{display:grid;gap:12px}
+/* home */
+.stats{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-size:12px;padding:3px 9px;border-radius:999px;background:var(--sunk);color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tag b{color:var(--ink);font-weight:600}
+.hero{background:var(--hero);color:var(--hero-ink);border-radius:14px;padding:16px;display:grid;gap:12px}
+.hero small{font-size:12px;opacity:.7;font-weight:500;letter-spacing:.04em}
+.hero b{font-size:18px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search{position:relative}
+.search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.search input{padding-left:38px}
 .sites{display:grid;gap:10px}
-.site{display:grid;grid-template-columns:84px 1fr;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px;text-align:left;width:100%}
-.site:hover{border-color:var(--muted)}
-.thumb{width:84px;height:84px;border-radius:6px;background:var(--sunk);overflow:hidden;display:grid;place-items:center;color:var(--muted)}
+.site{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px;display:grid;gap:10px}
+.site-main{display:grid;grid-template-columns:72px 1fr auto;gap:12px;align-items:center;text-align:left;border:0;background:transparent;padding:0;width:100%}
+.thumb{width:72px;height:72px;border-radius:6px;background:var(--sunk);overflow:hidden;display:grid;place-items:center;color:var(--muted)}
 .thumb img{width:100%;height:100%;object-fit:cover;display:block}
-.site-body{min-width:0;display:grid;gap:3px}
+.site-body{min-width:0;display:grid;gap:2px}
 .site-name{font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .site-sub{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:3px}
-.tag{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--sunk);color:var(--muted);font-variant-numeric:tabular-nums}
-.tag b{color:var(--ink);font-weight:600}
+.site-acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chev{color:var(--muted)}
 /* empty */
 .empty{display:grid;gap:18px;justify-items:center;text-align:center;padding:28px 8px}
 .empty h2{margin:0;font-size:19px;text-wrap:balance}
 .empty p{margin:0;color:var(--muted);max-width:34ch}
-.sheet-mock{width:150px;aspect-ratio:210/297;background:#fff;border:1px solid var(--line);border-radius:3px;padding:9px;display:grid;grid-template-rows:auto repeat(3,1fr);gap:6px;box-shadow:0 8px 24px rgba(0,0,0,.08)}
+.sheet-mock{width:150px;aspect-ratio:210/297;background:#fff;border:1px solid var(--line);border-radius:3px;padding:9px;display:grid;grid-template-rows:auto repeat(2,1fr);gap:6px;box-shadow:0 8px 24px rgba(0,0,0,.08)}
 .sheet-mock .t{height:6px;width:60%;margin:0 auto;background:#1B2024;border-radius:2px}
-.sheet-mock .row{display:grid;grid-template-columns:1.7fr 1fr;border:1px solid #1B2024}
+.sheet-mock .row{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.sheet-mock .c{border:1px solid #1B2024;display:grid;grid-template-rows:1.4fr 1fr}
 .sheet-mock .ph{background:linear-gradient(135deg,#C9CFC6,#A9B2A6)}
-.sheet-mock .tb{display:grid;grid-template-rows:repeat(4,1fr);border-left:1px solid #1B2024}
-.sheet-mock .tb i{border-bottom:1px solid #1B2024}
-.sheet-mock .tb i:last-child{border:0}
+.sheet-mock .tb{background:repeating-linear-gradient(#fff 0 5px,#1B2024 5px 6px)}
 /* site screen */
-.site-head{display:grid;gap:4px;margin-bottom:14px}
+.tabs{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line);margin:-16px 0 14px}
+.tabs button{border:0;background:transparent;padding:12px 4px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;font-size:14px}
+.tabs button.on{color:var(--ink);border-bottom-color:var(--accent)}
+.site-head{display:grid;gap:2px;margin-bottom:12px}
 .site-head .sub{color:var(--muted);font-size:13px}
-.filters{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;scrollbar-width:none}
+.filters{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:8px;scrollbar-width:none}
 .chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:500;white-space:nowrap;display:inline-flex;gap:6px;align-items:center;min-height:34px}
 .chip .n{font-family:var(--f-data);font-size:12px;color:var(--muted)}
 .chip.on{background:var(--ink);border-color:var(--ink);color:var(--surface)}
 .chip.on .n{color:var(--surface);opacity:.7}
-.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.chip.warnc{border-color:var(--warn);color:var(--warn)}
+.chip.warnc.on{background:var(--warn);color:#fff}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:6px}
 @media(min-width:620px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .tile{position:relative;border:1px solid var(--line);background:var(--surface);border-radius:var(--r);overflow:hidden;text-align:left;padding:0;display:grid}
 .tile .img{aspect-ratio:4/3;background:var(--sunk);position:relative}
 .tile .img img{width:100%;height:100%;object-fit:cover;display:block}
-.no{position:absolute;left:6px;top:6px;font-family:var(--f-data);font-size:11px;background:rgba(20,24,27,.78);color:#fff;padding:2px 6px;border-radius:4px}
-.stage{position:absolute;right:6px;top:6px;font-size:11px;font-weight:600;padding:2px 7px;border-radius:4px;color:#fff}
+.pill{position:absolute;font-size:11px;font-weight:600;padding:2px 7px;border-radius:999px;color:#fff;line-height:1.5}
+.pill.tl{left:6px;top:6px;background:rgba(20,24,27,.78);font-family:var(--f-data);font-weight:500;border-radius:4px}
+.pill.tr{right:6px;top:6px;background:var(--warn)}
+.pill.bl{left:6px;bottom:6px}
 .st-시공전{background:var(--pre)} .st-시공중{background:var(--mid)} .st-시공후{background:var(--post)}
 .tile .cap{padding:8px 9px 9px;display:grid;gap:1px;min-width:0}
 .tile .cap b{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tile .cap span{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tile .cap .muted-i{color:var(--muted);font-weight:400}
 .tile.sel{outline:3px solid var(--accent);outline-offset:-3px}
-.check{position:absolute;left:6px;bottom:6px;width:26px;height:26px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.35);display:grid;place-items:center}
+.check{position:absolute;right:6px;bottom:6px;width:26px;height:26px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.35);display:grid;place-items:center}
 .tile.sel .check{background:var(--accent);border-color:var(--accent)}
 .hint{color:var(--muted);font-size:13px;text-align:center;padding:30px 10px;border:1.5px dashed var(--line);border-radius:var(--r)}
+.reports{display:grid;gap:10px}
+.report{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:grid;gap:10px;text-align:left}
+.report-top{display:grid;grid-template-columns:40px 1fr;gap:12px;align-items:center;border:0;background:transparent;padding:0;text-align:left;width:100%}
+.doc-ic{width:40px;height:48px;border-radius:4px;background:var(--accent-soft);display:grid;place-items:center;color:var(--ink)}
+.report-acts{display:flex;gap:6px;flex-wrap:wrap}
+.report-acts .btn{flex:1}
 /* bottom bar */
 .bar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
 .bar .wrap{display:flex;gap:8px;padding-block:10px}
-.bar .btn{flex:1}
+.bar .btn{flex:1;padding-inline:8px}
 .bar .count{align-self:center;font-weight:600;font-size:14px;flex:none;padding-right:4px;font-variant-numeric:tabular-nums}
 /* sheets */
 .scrim{position:fixed;inset:0;z-index:40;background:rgba(10,12,14,.5);display:flex;align-items:flex-end;justify-content:center}
@@ -112,7 +138,7 @@ main{padding-block:16px 112px}
 .sheet-foot{display:flex;gap:8px;padding:10px 16px;border-top:1px solid var(--line)}
 .sheet-foot .btn{flex:1}
 .field{display:grid;gap:6px;min-width:0}
-.field label{font-size:13px;font-weight:600}
+.field>label,.field .lab{font-size:13px;font-weight:600}
 .field .opt{font-weight:400;color:var(--muted)}
 .inp{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:10px 12px;min-height:44px}
 .inp:focus{border-color:var(--ink);outline:none}
@@ -131,20 +157,53 @@ textarea.inp{min-height:76px;resize:vertical}
 .nav:disabled{opacity:.25}
 .pos{font-family:var(--f-data);font-size:12px;color:var(--muted)}
 .row-actions{display:flex;flex-wrap:wrap;gap:8px}
-.layouts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.lay{border:1.5px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 6px 8px;display:grid;gap:8px;justify-items:center;font-size:12px;font-weight:600}
-.lay.on{border-color:var(--ink);background:var(--accent-soft)}
-.lay small{font-weight:400;color:var(--muted)}
-.mini{width:44px;aspect-ratio:210/297;background:#fff;border:1px solid #9AA4A9;padding:3px;display:grid;gap:2px}
-.mini i{display:block;background:#B9C1B5}
-.mini.side{grid-template-rows:repeat(3,1fr)} .mini.side i{background:linear-gradient(90deg,#B9C1B5 62%,#fff 62%,#fff 64%,#E3E6E1 64%)}
-.mini.below{grid-template-rows:repeat(2,1fr)} .mini.below i{background:linear-gradient(#B9C1B5 70%,#E3E6E1 70%)}
+.info-card{border:1px solid var(--line);border-radius:var(--r);padding:12px;display:grid;gap:8px;background:var(--bg)}
+.info-card .title{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:600}
+.pend{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.pend div{position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;background:var(--sunk)}
+.pend img{width:100%;height:100%;object-fit:cover;display:block}
+.pend button{position:absolute;right:4px;top:4px;width:26px;height:26px;border-radius:50%;border:0;background:rgba(20,24,27,.7);color:#fff;display:grid;place-items:center}
+.templates{display:grid;gap:8px}
+.tpl{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;border:1.5px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px;text-align:left}
+.tpl.on{border-color:var(--ink);background:var(--accent-soft)}
+.tpl b{display:block;font-size:14px}
+.tpl small{color:var(--muted);font-size:12px}
+.tpl .ck{width:22px;height:22px;border-radius:50%;border:2px solid var(--line)}
+.tpl.on .ck{background:var(--ink);border-color:var(--ink);box-shadow:inset 0 0 0 4px var(--accent-soft)}
+.mini{width:36px;aspect-ratio:210/297;background:#fff;border:1px solid #9AA4A9;padding:3px;display:grid;gap:2px}
+.mini i{display:block}
+.mini.below{grid-template-rows:repeat(2,1fr)} .mini.below i{background:linear-gradient(#B9C1B5 68%,#E3E6E1 68%)}
+.mini.side{grid-template-rows:repeat(3,1fr)} .mini.side i{background:linear-gradient(90deg,#B9C1B5 62%,#fff 62%,#fff 66%,#E3E6E1 66%)}
+.mini.grid4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr} .mini.grid4 i{background:linear-gradient(#B9C1B5 64%,#E3E6E1 64%)}
 .mini.grid6{grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,1fr)} .mini.grid6 i{background:linear-gradient(#B9C1B5 75%,#E3E6E1 75%)}
+.switch-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.switch-row small{display:block;color:var(--muted);font-size:12px;font-weight:400}
+.switch{width:50px;height:30px;border-radius:999px;border:0;background:var(--line);position:relative;flex:none}
+.switch::after{content:"";position:absolute;left:3px;top:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .15s}
+.switch[aria-checked="true"]{background:var(--accent)}
+.switch[aria-checked="true"]::after{transform:translateX(20px)}
+.warn-card{border:1.5px solid var(--warn);background:var(--warn-soft);border-radius:var(--r);padding:12px;display:grid;gap:8px}
+.warn-card .title{font-weight:700}
+.warn-card p{margin:0;font-size:12px;color:var(--muted)}
+.miss{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;border:0;background:transparent;padding:4px 0;text-align:left;width:100%}
+.miss .t{width:44px;height:44px;border-radius:6px;overflow:hidden;background:var(--sunk)}
+.miss .t img{width:100%;height:100%;object-fit:cover;display:block}
+.miss b{font-size:13px;display:block}
+.miss span{font-size:12px;color:var(--muted)}
 .previews{display:grid;gap:12px}
 .previews img{width:100%;border:1px solid var(--line);border-radius:4px;background:#fff;display:block}
 .progress{height:6px;background:var(--sunk);border-radius:3px;overflow:hidden}
 .progress i{display:block;height:100%;background:var(--accent);transition:width .2s}
-.note{font-size:13px;color:var(--muted)}
+.note{font-size:13px;color:var(--muted);margin:0}
+.reorder{display:grid;gap:8px;position:relative}
+.rrow{display:grid;grid-template-columns:52px 1fr 44px;gap:10px;align-items:center;height:60px;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:4px 4px 4px 4px;position:relative}
+.rrow .t{width:52px;height:50px;border-radius:5px;overflow:hidden;background:var(--sunk)}
+.rrow .t img{width:100%;height:100%;object-fit:cover;display:block}
+.rrow .txt{min-width:0}
+.rrow .txt b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rrow .txt span{font-size:12px;color:var(--muted)}
+.grip{height:50px;border:0;background:transparent;color:var(--muted);display:grid;place-items:center;touch-action:none;cursor:grab}
+.rrow.drag{z-index:2;box-shadow:0 8px 20px rgba(0,0,0,.18);border-color:var(--ink)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:999px;font-size:14px;max-width:calc(100% - 32px);text-align:center}
 .loading{display:grid;place-items:center;gap:10px;padding:60px 0;color:var(--muted)}
 .spin{width:26px;height:26px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:sp 1s linear infinite}
@@ -163,6 +222,8 @@ textarea.inp{min-height:76px;resize:vertical}
 (function(){
 const {useState,useEffect,useMemo,useRef} = React;
 const html = htm.bind(React.createElement);
+const NATIVE = window.SiteNative || null;
+const APP_NAME = '상규 사진대지';
 
 /* ---------- helpers ---------- */
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,8);
@@ -171,7 +232,18 @@ const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
 const today = () => ymd(new Date());
 const dotDate = s => s ? s.replace(/-/g,'.') : '';
 const STAGES = ['시공전','시공중','시공후'];
-const TRADES = ['건축','인테리어','전기','설비','소방','통신','기계','조경','토목','철거','도장','방수'];
+const stageLabel = s => s ? s.replace('시공','시공 ') : '';
+const TRADES = ['건축','인테리어','타일','도장','전기','설비','소방','통신','기계','조경','토목','철거','방수','마감'];
+const LAYOUTS = [
+  {k:'below', n:2, name:'2장 배치', desc:'사진을 크게 보여주는 상세형'},
+  {k:'side',  n:3, name:'3장 배치', desc:'사진 옆에 표가 붙는 형식'},
+  {k:'grid4', n:4, name:'4장 배치', desc:'기본 사진대지 표준형'},
+  {k:'grid6', n:6, name:'6장 배치', desc:'한 장에 많이 넣는 압축형'}
+];
+const perPage = k => (LAYOUTS.find(l => l.k === k) || LAYOUTS[2]).n;
+const layoutName = k => (LAYOUTS.find(l => l.k === k) || LAYOUTS[2]).name;
+function missingOf(p){ const m = []; if(!p.trade) m.push('공종'); if(!p.location) m.push('위치'); if(!p.stage) m.push('단계'); if(!p.note) m.push('메모'); return m; }
+const safeName = s => String(s || '현장').replace(/[\\/:*?"<>|\n\r\t]/g,' ').replace(/\s+/g,' ').trim() || '현장';
 
 /* ---------- storage: account (db + assets) or this device (IndexedDB) ---------- */
 function cloudStore(col, assets){
@@ -180,10 +252,11 @@ function cloudStore(col, assets){
     subscribe(fn, onErr){ return col.onSnapshot(s => fn(s.docs.map(d => ({...d.data(), id:d.id}))), e => onErr && onErr(e)); },
     put(rec){ const {id, ...data} = rec; return col.doc(id).set(data); },
     del(id){ return col.doc(id).delete(); },
-    async addBlob(blob){ const r = await assets.upload(blob, {type:'image/jpeg'}); return r.id; },
+    async addBlob(blob, type){ const r = await assets.upload(blob, {type: type || 'image/jpeg'}); return r.id; },
     async delBlob(aid){ try{ await assets.delete(aid); }catch(e){} },
     urlSync(aid){ return '/_blob/' + aid; },
-    async url(aid){ return '/_blob/' + aid; }
+    async url(aid){ return '/_blob/' + aid; },
+    async getBlob(aid){ const r = await fetch('/_blob/' + aid); if(!r.ok) throw new Error('missing'); return r.blob(); }
   };
 }
 function openIDB(){
@@ -203,29 +276,94 @@ async function localStore(){
     t.oncomplete = () => res(req && req.result); t.onerror = () => rej(t.error);
   });
   const all = async () => db ? (await tx('recs','readonly', s => s.getAll())) : [...mem.recs.values()];
-  const emit = async () => { if(listener) listener(await all()); };
+  let emitT = null;
+  const emit = () => { clearTimeout(emitT); emitT = setTimeout(async () => { if(listener) listener(await all()); }, 30); };
+  const getBlob = async id => { const b = db ? await tx('blobs','readonly', s => s.get(id)) : mem.blobs.get(id); if(!b) throw new Error('missing'); return b; };
   return {
     mode: db ? 'local' : 'memory',
     subscribe(fn){ listener = fn; emit(); return () => { listener = null; }; },
     async put(rec){ if(db) await tx('recs','readwrite', s => s.put(rec)); else mem.recs.set(rec.id, rec); emit(); },
     async del(id){ if(db) await tx('recs','readwrite', s => s.delete(id)); else mem.recs.delete(id); emit(); },
-    async addBlob(blob){ const id = uid(); if(db) await tx('blobs','readwrite', s => s.put(blob, id)); else mem.blobs.set(id, blob); urls.set(id, URL.createObjectURL(blob)); return id; },
-    async delBlob(id){ if(db) await tx('blobs','readwrite', s => s.delete(id)); else mem.blobs.delete(id); },
+    async addBlob(blob){ const id = uid(); if(db) await tx('blobs','readwrite', s => s.put(blob, id)); else mem.blobs.set(id, blob); if((blob.type || '').startsWith('image')) urls.set(id, URL.createObjectURL(blob)); return id; },
+    async delBlob(id){ if(db) await tx('blobs','readwrite', s => s.delete(id)); else mem.blobs.delete(id); const u = urls.get(id); if(u){ URL.revokeObjectURL(u); urls.delete(id); } },
     urlSync(id){ return urls.get(id) || null; },
-    async url(id){
-      if(urls.has(id)) return urls.get(id);
-      const b = db ? await tx('blobs','readonly', s => s.get(id)) : mem.blobs.get(id);
-      if(!b) return null; const u = URL.createObjectURL(b); urls.set(id, u); return u;
-    }
+    async url(id){ if(urls.has(id)) return urls.get(id); let b; try{ b = await getBlob(id); }catch(e){ return null; } const u = URL.createObjectURL(b); urls.set(id, u); return u; },
+    getBlob
   };
 }
 async function initStore(){
   const use = n => (window.claude && window.claude.use) ? window.claude.use(n).catch(() => null) : Promise.resolve(null);
-  const [db, assets, user] = await Promise.all([use('db'), use('assets'), use('user')]);
-  if(db && assets && user){
-    try{ const id = await user.id(); if(id) return cloudStore(db.collection('data/users/' + id), assets); }catch(e){}
+  if(!NATIVE){
+    const [db, assets, user] = await Promise.all([use('db'), use('assets'), use('user')]);
+    if(db && assets && user){
+      try{ const id = await user.id(); if(id) return cloudStore(db.collection('data/users/' + id), assets); }catch(e){}
+    }
   }
   return localStore();
+}
+
+/* ---------- files out: app (save/share/print/open) or claude.ai downloads ---------- */
+function blobToB64(b){ return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = rej; r.readAsDataURL(b); }); }
+async function nativeOut(blob, name, mime, action){
+  const id = NATIVE.begin(name, mime); if(!id) return 'err';
+  const CH = 786432; // multiple of 3 so base64 chunks join cleanly
+  for(let o = 0; o < blob.size; o += CH){ if(!NATIVE.append(id, await blobToB64(blob.slice(o, o + CH)))) return 'err'; }
+  return NATIVE.finish(id, action);
+}
+let dlPromise = null;
+const getDownloads = () => dlPromise || (dlPromise = (window.claude && window.claude.use) ? window.claude.use('downloads').catch(() => null) : Promise.resolve(null));
+async function outputFile(blob, name, mime, action, toast){
+  if(NATIVE){
+    const r = await nativeOut(blob, name, mime, action);
+    if(!(r && r.startsWith('ok'))) toast(action === 'open' ? 'PDF를 열 수 있는 앱이 없어요' : action === 'print' ? '인쇄를 시작하지 못했어요' : '처리하지 못했어요');
+    else if(action === 'save') toast('저장했어요 · ' + r.slice(3));
+    return;
+  }
+  const dl = await getDownloads();
+  if(!dl){ toast('이 화면에서는 파일 저장을 쓸 수 없어요'); return; }
+  try{ await dl.save({filename:name, data:blob}); toast('저장했어요'); }
+  catch(e){ if(e && e.code === 'declined') return; toast(e && e.code === 'rate_limited' ? '저장 창이 이미 열려 있어요' : '저장하지 못했어요'); }
+}
+
+/* ---------- zip (backup) ---------- */
+const CRC = (() => { const t = new Uint32Array(256); for(let n = 0; n < 256; n++){ let c = n; for(let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8){ let c = 0xFFFFFFFF; for(let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+async function makeZip(files){ // files: [{name, blob}]
+  const enc = new TextEncoder(), parts = [], central = []; let off = 0, cdSize = 0;
+  for(const f of files){
+    const data = new Uint8Array(await f.blob.arrayBuffer()), nm = enc.encode(f.name), crc = crc32(data), len = data.length;
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0,0x04034b50,true); h.setUint16(4,20,true); h.setUint16(6,0x0800,true); h.setUint16(8,0,true);
+    h.setUint16(10,0,true); h.setUint16(12,0x21,true); h.setUint32(14,crc,true); h.setUint32(18,len,true); h.setUint32(22,len,true);
+    h.setUint16(26,nm.length,true); h.setUint16(28,0,true);
+    parts.push(h.buffer, nm, f.blob);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0,0x02014b50,true); c.setUint16(4,20,true); c.setUint16(6,20,true); c.setUint16(8,0x0800,true); c.setUint16(10,0,true);
+    c.setUint16(12,0,true); c.setUint16(14,0x21,true); c.setUint32(16,crc,true); c.setUint32(20,len,true); c.setUint32(24,len,true);
+    c.setUint16(28,nm.length,true); c.setUint16(30,0,true); c.setUint16(32,0,true); c.setUint16(34,0,true); c.setUint16(36,0,true);
+    c.setUint32(38,0,true); c.setUint32(42,off,true);
+    central.push(c.buffer, nm); cdSize += 46 + nm.length; off += 30 + nm.length + len;
+  }
+  const e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0,0x06054b50,true); e.setUint16(8,files.length,true); e.setUint16(10,files.length,true); e.setUint32(12,cdSize,true); e.setUint32(16,off,true);
+  return new Blob([...parts, ...central, e.buffer], {type:'application/zip'});
+}
+async function readZip(blob){
+  const buf = new Uint8Array(await blob.arrayBuffer()), dv = new DataView(buf.buffer), dec = new TextDecoder();
+  let e = buf.length - 22; while(e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
+  if(e < 0) throw new Error('not zip');
+  const n = dv.getUint16(e + 10, true); let p = dv.getUint32(e + 16, true); const out = {};
+  for(let i = 0; i < n; i++){
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+    const nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), lo = dv.getUint32(p + 42, true);
+    const name = dec.decode(buf.subarray(p + 46, p + 46 + nl));
+    const start = lo + 30 + dv.getUint16(lo + 26, true) + dv.getUint16(lo + 28, true);
+    const raw = buf.subarray(start, start + csize);
+    if(method === 0) out[name] = raw;
+    else if(method === 8 && window.DecompressionStream){ out[name] = new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer()); }
+    p += 46 + nl + xl + cl;
+  }
+  return out;
 }
 
 /* ---------- image prep ---------- */
@@ -233,7 +371,7 @@ function loadImg(src){ return new Promise((res, rej) => { const i = new Image();
 async function prepImage(file){
   let src;
   try{ src = await createImageBitmap(file, {imageOrientation:'from-image'}); }
-  catch(e){ const u = URL.createObjectURL(file); src = await loadImg(u); }
+  catch(e){ src = await loadImg(URL.createObjectURL(file)); }
   const iw = src.width || src.naturalWidth, ih = src.height || src.naturalHeight;
   const s = Math.min(1, 1800 / Math.max(iw, ih));
   const w = Math.round(iw * s), h = Math.round(ih * s);
@@ -250,8 +388,8 @@ async function bitmapFrom(url){
 
 /* ---------- PDF rendering (canvas pages → jsPDF) ---------- */
 const PW = 1240, PH = 1754, S = 1.5, M = 70;
-const FONT = '"IBM Plex Sans KR","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
-const INK = '#111417', LABEL_BG = '#EEF0EC';
+const FONT = '"IBM Plex Sans KR","Noto Sans KR","Noto Sans CJK KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+const INK = '#111417', LABEL_BG = '#EEF0EC', ACCENT = '#F0B400', GREY = '#5B656B';
 async function fontsReady(){
   try{ await Promise.all([document.fonts.load(`700 40px ${FONT}`,'현장'), document.fonts.load(`500 24px ${FONT}`,'공종'), document.fonts.load(`400 24px ${FONT}`,'내용')]); }catch(e){}
 }
@@ -266,14 +404,14 @@ function wrap(g, text, w, maxLines){
   if(out.length > maxLines){ const k = out.slice(0, maxLines); k[maxLines-1] = fit(g, k[maxLines-1] + '        ', w).replace(/\s+…$/,'…'); return k; }
   return out;
 }
-function cellLabel(g, x, y, w, h, label){
+function cellLabel(g, x, y, w, h, label, size){
   g.fillStyle = LABEL_BG; g.fillRect(x, y, w, h);
-  g.fillStyle = INK; g.font = `600 22px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = INK; g.font = `600 ${size || 21}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
   g.fillText(label, x + w/2, y + h/2); g.textAlign = 'left';
 }
 function cellText(g, x, y, w, h, text, size){
-  g.fillStyle = INK; g.font = `400 ${size||22}px ${FONT}`; g.textBaseline = 'middle';
-  g.fillText(fit(g, text, w - 24), x + 12, y + h/2);
+  g.fillStyle = INK; g.font = `400 ${size || 21}px ${FONT}`; g.textBaseline = 'middle';
+  g.fillText(fit(g, text, w - 22), x + 11, y + h/2);
 }
 function box(g, x, y, w, h, lw){ g.lineWidth = lw || 1.5; g.strokeStyle = INK; g.strokeRect(x, y, w, h); }
 function hline(g, x1, x2, y){ g.beginPath(); g.moveTo(x1, y); g.lineTo(x2, y); g.lineWidth = 1.5; g.strokeStyle = INK; g.stroke(); }
@@ -287,109 +425,157 @@ function drawPhoto(g, img, x, y, w, h, mode, no){
     g.drawImage(img, x + (w - iw*s)/2, y + (h - ih*s)/2, iw*s, ih*s);
   }
   if(no){
-    g.font = `500 18px ${FONT}`; const t = 'No. ' + no; const tw = g.measureText(t).width;
-    g.fillStyle = 'rgba(255,255,255,.88)'; g.fillRect(x + 10, y + 10, tw + 16, 30);
-    g.fillStyle = INK; g.textBaseline = 'middle'; g.fillText(t, x + 18, y + 25);
+    g.font = `500 17px ${FONT}`; const t = 'No. ' + no; const tw = g.measureText(t).width;
+    g.fillStyle = 'rgba(255,255,255,.9)'; g.fillRect(x + 8, y + 8, tw + 14, 28);
+    g.fillStyle = INK; g.textBaseline = 'middle'; g.fillText(t, x + 15, y + 22);
   }
   g.restore(); box(g, x, y, w, h);
 }
-function drawHeader(g, site, title, page, pages){
+// table rows: [[label, value], ...] stacked; last row may take remaining height (multiline)
+function sideTable(g, rows, x, y, w, h, rh, lw, size, lastFlex){
+  box(g, x, y, w, h, 1.5); vline(g, x + lw, y, y + h);
+  rows.forEach((r, i) => {
+    const ry = y + i*rh, flex = lastFlex && i === rows.length - 1, hh = flex ? h - i*rh : rh;
+    cellLabel(g, x+1, ry+1, lw-2, hh-2, r[0], size);
+    if(flex){
+      g.font = `400 ${size}px ${FONT}`; g.fillStyle = INK; g.textBaseline = 'top';
+      const lh = Math.round(size * 1.45), lines = wrap(g, r[1], w - lw - 22, Math.max(1, Math.floor((hh - 16) / lh)));
+      lines.forEach((l, k) => g.fillText(l, x + lw + 11, ry + 10 + k*lh));
+    } else cellText(g, x + lw, ry, w - lw, rh, r[1], size);
+    if(i < rows.length - 1) hline(g, x, x + w, ry + rh);
+  });
+}
+function drawHeader(g, site, title){
   g.fillStyle = INK; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
-  g.font = `700 44px ${FONT}`;
-  const t = (title || '현장 사진대지').split('').join(' ');
-  g.fillText(t, PW/2, M + 42);
+  g.font = `700 40px ${FONT}`;
+  g.fillText(fit(g, title || '현장 사진대지', PW - 2*M), PW/2, M + 38);
   g.textAlign = 'left';
-  const y = M + 72, rh = 46, x = M, w = PW - 2*M, lw = 130, lw2 = 110;
-  const c1 = x + lw, c3 = x + w - lw2 - 220, c4 = c3 + lw2;
+  const y = M + 64, rh = 44, x = M, w = PW - 2*M, lw = 124, lw2 = 104, vw2 = 210;
+  const c1 = x + lw, c3 = x + w - lw2 - vw2, c4 = c3 + lw2;
   box(g, x, y, w, rh*2, 2); hline(g, x, x + w, y + rh);
   vline(g, c1, y, y + rh*2); vline(g, c3, y, y + rh*2); vline(g, c4, y, y + rh*2);
   cellLabel(g, x+1, y+1, lw-2, rh-2, '공 사 명'); cellText(g, c1, y, c3 - c1, rh, site.name);
-  cellLabel(g, c3+1, y+1, lw2-2, rh-2, '쪽'); cellText(g, c4, y, x + w - c4, rh, `${page} / ${pages}`);
-  cellLabel(g, x+1, y+rh+1, lw-2, rh-2, '발 주 처'); cellText(g, c1, y + rh, c3 - c1, rh, site.client || '');
-  cellLabel(g, c3+1, y+rh+1, lw2-2, rh-2, '시 공 사'); cellText(g, c4, y + rh, x + w - c4, rh, site.contractor || '');
-  return y + rh*2 + 26;
+  cellLabel(g, c3+1, y+1, lw2-2, rh-2, '작 성 일'); cellText(g, c4, y, x + w - c4, rh, dotDate(today()));
+  cellLabel(g, x+1, y+rh+1, lw-2, rh-2, '현장 주소'); cellText(g, c1, y + rh, c3 - c1, rh, site.address || '');
+  cellLabel(g, c3+1, y+rh+1, lw2-2, rh-2, '담 당 자'); cellText(g, c4, y + rh, x + w - c4, rh, site.manager || '');
+  return y + rh*2 + 22;
 }
-function drawFooter(g, page){
-  g.fillStyle = '#5B656B'; g.font = `400 18px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
-  g.fillText(`- ${page} -`, PW/2, PH - M + 30); g.textAlign = 'left';
+function drawFooter(g, page, pages, site){
+  g.fillStyle = GREY; g.font = `400 18px ${FONT}`; g.textBaseline = 'alphabetic';
+  g.textAlign = 'center'; g.fillText(`${page} / ${pages}`, PW/2, PH - M + 34);
+  if(site.contractor){ g.textAlign = 'right'; g.fillText(fit(g, site.contractor, 360), PW - M, PH - M + 34); }
+  g.textAlign = 'left';
 }
+function drawCover(g, site, title, count){
+  g.fillStyle = GREY; g.font = `500 20px ${FONT}`; g.textBaseline = 'alphabetic';
+  g.fillText('SITE PHOTO REPORT', M, M + 40);
+  g.textAlign = 'right'; g.fillText(dotDate(today()), PW - M, M + 40); g.textAlign = 'left';
+  g.fillStyle = INK; g.font = `700 66px ${FONT}`;
+  const lines = wrap(g, title || site.name, PW - 2*M, 3);
+  let y = 470; lines.forEach((l, i) => g.fillText(l, M, y + i*86));
+  y += (lines.length - 1)*86 + 50;
+  g.fillStyle = ACCENT; g.fillRect(M, y, 420, 10);
+  y += 70;
+  const period = (site.start || site.end) ? `${dotDate(site.start)} ~ ${dotDate(site.end)}` : '';
+  const rows = [['공 사 명', site.name], ['현장 주소', site.address], ['발 주 처', site.client], ['업 체 명', site.contractor], ['담 당 자', site.manager], ['공사 기간', period], ['작 성 일', dotDate(today())], ['사진 매수', count + '장']];
+  sideTable(g, rows, M, y, PW - 2*M, rows.length * 62, 62, 200, 24, false);
+  if(site.contractor){ g.fillStyle = INK; g.font = `700 34px ${FONT}`; g.textAlign = 'right'; g.textBaseline = 'alphabetic'; g.fillText(fit(g, site.contractor, PW - 2*M), PW - M, PH - M - 10); g.textAlign = 'left'; }
+}
+const rowsFor = p => [['공 종', p.trade], ['위 치', p.location], ['단 계', stageLabel(p.stage)], ['촬영일', dotDate(p.date)], ['메 모', p.note]];
 function blockSide(g, p, img, x, y, w, h, mode, no){
-  const pw = Math.round(w * 0.63), tx = x + pw, tw = w - pw, lw = 96, rh = 54;
+  const pw = Math.round(w * 0.62);
   drawPhoto(g, img, x, y, pw, h, mode, no);
-  box(g, tx, y, tw, h, 1.5); vline(g, tx + lw, y, y + h);
-  const rows = [['공 종', p.trade], ['위 치', p.location], ['공 정', p.stage], ['일 자', dotDate(p.date)]];
-  rows.forEach((r, i) => { const ry = y + i*rh; cellLabel(g, tx+1, ry+1, lw-2, rh-2, r[0]); cellText(g, tx + lw, ry, tw - lw, rh, r[1]); hline(g, tx, tx + tw, ry + rh); });
-  const ny = y + rows.length*rh, nh = h - rows.length*rh;
-  cellLabel(g, tx+1, ny+1, lw-2, nh-2, '내 용');
-  g.font = `400 21px ${FONT}`; g.fillStyle = INK; g.textBaseline = 'top';
-  const lines = wrap(g, p.note, tw - lw - 24, Math.max(1, Math.floor((nh - 20) / 31)));
-  lines.forEach((l, i) => g.fillText(l, tx + lw + 12, ny + 12 + i*31));
+  sideTable(g, rowsFor(p), x + pw, y, w - pw, h, 54, 96, 21, true);
 }
 function blockBelow(g, p, img, x, y, w, h, mode, no){
-  const rh = 50, th = rh*3, ph = h - th, lw = 110, half = w/2;
+  const rh = 48, th = rh*3, ph = h - th, lw = 108, half = w/2;
   drawPhoto(g, img, x, y, w, ph, mode, no);
   const ty = y + ph; box(g, x, ty, w, th, 1.5);
   hline(g, x, x + w, ty + rh); hline(g, x, x + w, ty + rh*2);
   vline(g, x + lw, ty, ty + th); vline(g, x + half, ty, ty + rh*2); vline(g, x + half + lw, ty, ty + rh*2);
   cellLabel(g, x+1, ty+1, lw-2, rh-2, '공 종'); cellText(g, x + lw, ty, half - lw, rh, p.trade);
   cellLabel(g, x+half+1, ty+1, lw-2, rh-2, '위 치'); cellText(g, x + half + lw, ty, half - lw, rh, p.location);
-  cellLabel(g, x+1, ty+rh+1, lw-2, rh-2, '공 정'); cellText(g, x + lw, ty + rh, half - lw, rh, p.stage);
-  cellLabel(g, x+half+1, ty+rh+1, lw-2, rh-2, '일 자'); cellText(g, x + half + lw, ty + rh, half - lw, rh, dotDate(p.date));
-  cellLabel(g, x+1, ty+rh*2+1, lw-2, rh-2, '내 용'); cellText(g, x + lw, ty + rh*2, w - lw, rh, (p.note || '').replace(/\n/g,' '), 21);
+  cellLabel(g, x+1, ty+rh+1, lw-2, rh-2, '단 계'); cellText(g, x + lw, ty + rh, half - lw, rh, stageLabel(p.stage));
+  cellLabel(g, x+half+1, ty+rh+1, lw-2, rh-2, '촬 영 일'); cellText(g, x + half + lw, ty + rh, half - lw, rh, dotDate(p.date));
+  cellLabel(g, x+1, ty+rh*2+1, lw-2, rh-2, '메 모'); cellText(g, x + lw, ty + rh*2, w - lw, rh, (p.note || '').replace(/\n/g,' '));
 }
-function blockGrid(g, p, img, x, y, w, h, mode, no){
-  const ch = 82, ph = h - ch;
+function blockGrid4(g, p, img, x, y, w, h, mode, no){
+  const rh = 40, th = rh*5, ph = h - th;
+  drawPhoto(g, img, x, y, w, ph, mode, no);
+  const rows = rowsFor(p).map(r => [r[0], String(r[1] || '').replace(/\n/g,' ')]);
+  sideTable(g, rows, x, y + ph, w, th, rh, 86, 18, false);
+}
+function blockGrid6(g, p, img, x, y, w, h, mode, no){
+  const ch = 80, ph = h - ch;
   drawPhoto(g, img, x, y, w, ph, mode, no);
   box(g, x, y + ph, w, ch, 1.5);
   g.fillStyle = INK; g.textBaseline = 'top';
-  g.font = `600 21px ${FONT}`; g.fillText(fit(g, [p.trade, p.location].filter(Boolean).join(' · ') || '공종·위치 미입력', w - 24), x + 12, y + ph + 12);
-  g.font = `400 19px ${FONT}`; g.fillStyle = '#3B4247';
-  g.fillText(fit(g, [p.stage, dotDate(p.date), (p.note || '').replace(/\n/g,' ')].filter(Boolean).join(' · '), w - 24), x + 12, y + ph + 46);
+  g.font = `600 20px ${FONT}`; g.fillText(fit(g, [p.trade, p.location].filter(Boolean).join(' · ') || '-', w - 22), x + 11, y + ph + 11);
+  g.font = `400 18px ${FONT}`; g.fillStyle = '#3B4247';
+  g.fillText(fit(g, [stageLabel(p.stage), dotDate(p.date), (p.note || '').replace(/\n/g,' ')].filter(Boolean).join(' · '), w - 22), x + 11, y + ph + 45);
 }
+function newPage(){ const c = document.createElement('canvas'); c.width = PW*S; c.height = PH*S; const g = c.getContext('2d'); g.scale(S, S); g.fillStyle = '#fff'; g.fillRect(0, 0, PW, PH); return {c, g}; }
 async function renderPages(site, photos, opts, urlOf, onProgress){
   await fontsReady();
-  const per = {side:3, below:2, grid6:6}[opts.layout];
+  const per = perPage(opts.layout);
   const groups = []; for(let i = 0; i < photos.length; i += per) groups.push(photos.slice(i, i + per));
-  const out = [];
+  const out = [], total = groups.length + (opts.cover ? 1 : 0);
+  if(opts.cover){ const {c, g} = newPage(); drawCover(g, site, opts.title, photos.length); out.push(c.toDataURL('image/jpeg', 0.9)); onProgress && onProgress(1 / total); }
   for(let pi = 0; pi < groups.length; pi++){
-    const c = document.createElement('canvas'); c.width = PW*S; c.height = PH*S;
-    const g = c.getContext('2d'); g.scale(S, S);
-    g.fillStyle = '#fff'; g.fillRect(0, 0, PW, PH);
-    const top = drawHeader(g, site, opts.title, pi + 1, groups.length);
-    const bottom = PH - M - 10, gap = 22, W = PW - 2*M;
+    const {c, g} = newPage();
+    const top = drawHeader(g, site, opts.title);
+    const bottom = PH - M - 6, gap = 20, W = PW - 2*M;
     const imgs = await Promise.all(groups[pi].map(async p => { try{ const u = await urlOf(p.asset); return u ? await bitmapFrom(u) : null; }catch(e){ return null; } }));
     groups[pi].forEach((p, k) => {
       const no = pi*per + k + 1;
-      if(opts.layout === 'grid6'){
-        const cw = (W - gap)/2, chh = (bottom - top - gap*2)/3;
-        blockGrid(g, p, imgs[k], M + (k%2)*(cw + gap), top + Math.floor(k/2)*(chh + gap), cw, chh, opts.fit, no);
+      if(opts.layout === 'grid4' || opts.layout === 'grid6'){
+        const rowsN = opts.layout === 'grid4' ? 2 : 3;
+        const cw = (W - gap)/2, chh = (bottom - top - gap*(rowsN-1))/rowsN;
+        (opts.layout === 'grid4' ? blockGrid4 : blockGrid6)(g, p, imgs[k], M + (k%2)*(cw + gap), top + Math.floor(k/2)*(chh + gap), cw, chh, opts.fit, no);
       } else {
-        const n = per, bh = (bottom - top - gap*(n-1))/n;
+        const bh = (bottom - top - gap*(per-1))/per;
         (opts.layout === 'side' ? blockSide : blockBelow)(g, p, imgs[k], M, top + k*(bh + gap), W, bh, opts.fit, no);
       }
     });
     imgs.forEach(i => i && i.close && i.close());
-    drawFooter(g, pi + 1);
+    drawFooter(g, pi + 1, groups.length, site);
     out.push(c.toDataURL('image/jpeg', 0.88));
-    onProgress && onProgress((pi + 1) / groups.length);
+    onProgress && onProgress(out.length / total);
     await new Promise(r => setTimeout(r, 0));
   }
   return out;
 }
+function pdfBlob(pages){
+  const pdf = new window.jspdf.jsPDF({unit:'mm', format:'a4', compress:true});
+  pages.forEach((u, i) => { if(i) pdf.addPage(); pdf.addImage(u, 'JPEG', 0, 0, 210, 297, undefined, 'FAST'); });
+  return pdf.output('blob');
+}
 
 /* ---------- small UI pieces ---------- */
+const sv = (d, w) => html`<svg width=${w || 20} height=${w || 20} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const Icon = {
-  camera: html`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`,
-  album: html`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 16 5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.5"/></svg>`,
-  pdf: html`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 13h6M9 17h6"/></svg>`,
-  back: html`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5-7 7 7 7"/></svg>`,
-  close: html`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>`,
-  edit: html`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>`,
-  plus: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`,
-  left: html`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5-7 7 7 7"/></svg>`,
-  right: html`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg>`,
-  check: html`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#14181B" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>`,
-  mark: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14181B" stroke-width="2.2" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18"/><path d="M4 9h16M10 9v12"/></svg>`
+  camera: sv(html`<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>`),
+  album: sv(html`<rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 16 5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.5"/>`),
+  pdf: sv(html`<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 13h6M9 17h6"/>`),
+  back: sv(html`<path d="m15 5-7 7 7 7"/>`, 22),
+  close: sv(html`<path d="M6 6l12 12M18 6 6 18"/>`, 22),
+  edit: sv(html`<path d="M4 20h4L19 9l-4-4L4 16z"/>`),
+  plus: sv(html`<path d="M12 5v14M5 12h14"/>`, 18),
+  left: sv(html`<path d="m15 5-7 7 7 7"/>`, 22),
+  right: sv(html`<path d="m9 5 7 7-7 7"/>`, 22),
+  chev: sv(html`<path d="m9 5 7 7-7 7"/>`, 18),
+  check: html`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#14181B" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>`,
+  mark: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14181B" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18"/><path d="M4 9h16M10 9v12"/></svg>`,
+  search: sv(html`<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4"/>`, 18),
+  share: sv(html`<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="m8.2 10.8 7.6-3.6M8.2 13.2l7.6 3.6"/>`, 18),
+  print: sv(html`<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="1.5"/><path d="M7 14h10v7H7z"/>`, 18),
+  open: sv(html`<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v6H4V6h6"/>`, 18),
+  save: sv(html`<path d="M12 4v11M7 10l5 5 5-5"/><path d="M4 19h16"/>`, 18),
+  redo: sv(html`<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/>`, 18),
+  trash: sv(html`<path d="M4 7h16M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13M9 7V4h6v3"/>`, 18),
+  grip: html`<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>`,
+  order: sv(html`<path d="M8 4v16M4 8l4-4 4 4M16 20V4M12 16l4 4 4-4"/>`),
+  backup: sv(html`<path d="M7 18a5 5 0 0 1-.5-10A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9"/><path d="M12 12v8M9 15l3-3 3 3"/>`)
 };
 function usePhotoUrl(store, aid){
   const [u, setU] = useState(() => aid ? store.urlSync(aid) : null);
@@ -401,11 +587,10 @@ function Photo({store, aid, alt}){
   return u ? html`<img src=${u} alt=${alt || ''} loading="lazy" />` : null;
 }
 const sheetStack = [];
-const NATIVE = window.SiteNative || null;
 function Sheet({title, onClose, children, foot, right}){
   const closeRef = useRef(onClose); closeRef.current = onClose;
   useEffect(() => { const fn = () => closeRef.current(); sheetStack.push(fn); return () => { const i = sheetStack.indexOf(fn); if(i >= 0) sheetStack.splice(i, 1); }; }, []);
-  useEffect(() => { const k = e => { if(e.key === 'Escape') onClose(); }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [onClose]);
+  useEffect(() => { const k = e => { if(e.key === 'Escape' && sheetStack[sheetStack.length-1]) sheetStack[sheetStack.length-1](); }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, []);
   return html`<div class="scrim" onClick=${e => { if(e.target === e.currentTarget) onClose(); }}>
     <div class="sheet" role="dialog" aria-modal="true" aria-label=${title}>
       <div class="sheet-head"><h2>${title}</h2>${right}<button class="icon-btn" aria-label="닫기" onClick=${onClose}>${Icon.close}</button></div>
@@ -415,49 +600,77 @@ function Sheet({title, onClose, children, foot, right}){
 }
 function Suggest({values, onPick, current}){
   if(!values.length) return null;
-  return html`<div class="sugg">${values.map(v => html`<button type="button" key=${v} class=${'chip' + (v === current ? ' on' : '')} onClick=${() => onPick(v)}>${v}</button>`)}</div>`;
+  return html`<div class="sugg">${values.map(v => html`<button type="button" key=${v} class=${'chip' + (v === current ? ' on' : '')} onClick=${() => onPick(v === current ? '' : v)}>${v}</button>`)}</div>`;
 }
 function StageSeg({value, onChange, allowKeep}){
   const opts = allowKeep ? ['그대로', ...STAGES] : ['없음', ...STAGES];
   const cur = value === null ? '그대로' : (value || '없음');
   return html`<div class="seg" role="radiogroup">${opts.map(o => html`<button type="button" key=${o} role="radio" aria-checked=${cur === o} class=${cur === o ? 'on' : ''}
-    onClick=${() => onChange(o === '그대로' ? null : o === '없음' ? '' : o)}>${o}</button>`)}</div>`;
+    onClick=${() => onChange(o === '그대로' ? null : o === '없음' ? '' : o)}>${stageLabel(o)}</button>`)}</div>`;
+}
+function Switch({on, onChange, label}){
+  return html`<button type="button" class="switch" role="switch" aria-checked=${!!on} aria-label=${label} onClick=${() => onChange(!on)}></button>`;
+}
+function Confirm({title, body, action, onYes, onClose}){
+  return html`<${Sheet} title=${title} onClose=${onClose}
+    foot=${html`<button class="btn" onClick=${onClose}>취소</button><button class="btn primary" style=${{background:'var(--danger)', borderColor:'var(--danger)', color:'#fff'}} onClick=${onYes}>${action}</button>`}>
+    <p style=${{margin:0}}>${body}</p><//>`;
 }
 
 /* ---------- sheets ---------- */
 function SiteForm({site, onSave, onDelete, onClose}){
-  const [f, setF] = useState(() => site || {name:'', client:'', contractor:'', address:'', start:'', end:''});
+  const [f, setF] = useState(() => ({name:'', address:'', client:'', contractor:'', manager:'', start:'', end:'', ...(site || {})}));
   const set = k => e => setF({...f, [k]: e.target.value});
   const ok = f.name.trim().length > 0;
   return html`<${Sheet} title=${site ? '현장 정보 수정' : '새 현장'} onClose=${onClose}
-    foot=${html`${site && html`<button class="btn danger" onClick=${onDelete}>현장 삭제</button>`}<button class="btn primary" disabled=${!ok} onClick=${() => onSave({...f, name:f.name.trim()})}>${site ? '저장' : '현장 만들기'}</button>`}>
-    <div class="field"><label for="sf-name">공사명</label><input id="sf-name" class="inp" value=${f.name} onChange=${set('name')} placeholder="예: OO빌딩 3층 사무실 인테리어 공사" autoFocus /></div>
+    foot=${html`${site && html`<button class="btn danger" onClick=${onDelete}>현장 삭제</button>`}<button class="btn primary" disabled=${!ok} onClick=${() => onSave({...f, name:f.name.trim()})}>${site ? '저장' : '저장하고 사진 등록'}</button>`}>
+    ${!site && html`<div class="info-card"><div class="title">새 현장 만들기 <span class="tag">필수 1개</span></div><p class="note">공사명만 입력해도 바로 사진 등록을 시작할 수 있어요.</p></div>`}
+    <div class="field"><label for="sf-name">공사명</label><input id="sf-name" class="inp" value=${f.name} onChange=${set('name')} placeholder="예: 아파트 901호 타일 공사" autoFocus /></div>
+    <div class="field"><label for="sf-addr">현장 주소</label><input id="sf-addr" class="inp" value=${f.address} onChange=${set('address')} /></div>
     <div class="two">
-      <div class="field"><label for="sf-client">발주처 <span class="opt">선택</span></label><input id="sf-client" class="inp" value=${f.client} onChange=${set('client')} /></div>
-      <div class="field"><label for="sf-con">시공사 <span class="opt">선택</span></label><input id="sf-con" class="inp" value=${f.contractor} onChange=${set('contractor')} /></div>
+      <div class="field"><label for="sf-client">발주처/고객명</label><input id="sf-client" class="inp" value=${f.client} onChange=${set('client')} /></div>
+      <div class="field"><label for="sf-con">업체명</label><input id="sf-con" class="inp" value=${f.contractor} onChange=${set('contractor')} /></div>
     </div>
-    <div class="field"><label for="sf-addr">현장 주소 <span class="opt">선택</span></label><input id="sf-addr" class="inp" value=${f.address} onChange=${set('address')} /></div>
+    <div class="field"><label for="sf-man">담당자</label><input id="sf-man" class="inp" value=${f.manager} onChange=${set('manager')} /></div>
     <div class="two">
-      <div class="field"><label for="sf-start">공사 시작일</label><input id="sf-start" type="date" class="inp" value=${f.start} onChange=${set('start')} /></div>
-      <div class="field"><label for="sf-end">공사 종료일</label><input id="sf-end" type="date" class="inp" value=${f.end} onChange=${set('end')} /></div>
+      <div class="field"><label for="sf-start">시작일</label><input id="sf-start" type="date" class="inp" value=${f.start} onChange=${set('start')} /></div>
+      <div class="field"><label for="sf-end">종료일</label><input id="sf-end" type="date" class="inp" value=${f.end} onChange=${set('end')} /></div>
     </div>
-    <p class="note">공사명·발주처·시공사는 사진대지 PDF 맨 위 표에 들어가요.</p>
+    <p class="note">입력한 정보는 보고서 표지와 각 쪽 머리말 표에 들어가요.</p>
   <//>`;
 }
 
-function PhotoEditor({store, photos, startId, recentTrades, recentLocs, onSave, onMove, onDelete, onClose}){
+function RegisterSheet({site, pending, defaults, recentTrades, recentLocs, busy, onRemove, onCamera, onAlbum, onSave, onClose}){
+  const [trade, setTrade] = useState(defaults.trade || ''); const [loc, setLoc] = useState(defaults.location || '');
+  const [stage, setStage] = useState(defaults.stage || ''); const [note, setNote] = useState('');
+  const n = pending.length;
+  return html`<${Sheet} title="현장사진 등록" onClose=${onClose}
+    foot=${html`<button class="btn primary" disabled=${!n || busy} onClick=${() => onSave({trade, location:loc, stage, note})}>${Icon.camera} ${busy ? '저장하는 중…' : `${n}장 저장하고 목록 보기`}</button>`}>
+    <div class="info-card"><div class="title"><span>${site.name}</span><span class="tag">사진 <b>${n}</b>장</span></div>
+      <p class="note">${n ? `선택한 사진 ${n}장에 같은 정보를 적용해요.` : '사진을 찍거나 앨범에서 골라 주세요.'}</p></div>
+    ${n > 0 && html`<div class="pend">${pending.map(p => html`<div key=${p.key}><img src=${p.url} alt="" /><button aria-label="빼기" onClick=${() => onRemove(p.key)}>${Icon.close}</button></div>`)}</div>`}
+    <div class="two"><button class="btn" onClick=${onCamera}>${Icon.camera} 사진 촬영</button><button class="btn" onClick=${onAlbum}>${Icon.album} 앨범 여러 장</button></div>
+    <div class="field"><label for="rg-trade">공종</label><input id="rg-trade" class="inp" value=${trade} onChange=${e => setTrade(e.target.value)} placeholder="예: 타일" /><${Suggest} values=${recentTrades} current=${trade} onPick=${setTrade} /></div>
+    <div class="field"><label for="rg-loc">위치</label><input id="rg-loc" class="inp" value=${loc} onChange=${e => setLoc(e.target.value)} placeholder="예: 거실 욕실" /><${Suggest} values=${recentLocs} current=${loc} onPick=${setLoc} /></div>
+    <div class="field"><span class="lab">단계</span><${StageSeg} value=${stage} onChange=${setStage} /></div>
+    <div class="field"><label for="rg-note">메모 <span class="opt">비워 두면 나중에 사진마다 적어요</span></label><textarea id="rg-note" class="inp" value=${note} onChange=${e => setNote(e.target.value)}></textarea></div>
+    <p class="note">촬영일은 사진마다 찍은 날짜로 들어가요.</p>
+  <//>`;
+}
+
+function PhotoEditor({store, photos, startId, recentTrades, recentLocs, onSave, onDelete, onClose}){
   const [id, setId] = useState(startId);
   const idx = photos.findIndex(p => p.id === id);
   const p = photos[idx];
   const [d, setD] = useState(p);
   useEffect(() => { if(p) setD(p); }, [id]);
-  if(!p) return null;
+  if(!p || !d) return null;
   const dirty = ['trade','location','stage','date','note'].some(k => (d[k] || '') !== (p[k] || ''));
   const commit = () => { if(dirty) onSave(d); };
   const go = j => { commit(); setId(photos[j].id); };
   const set = k => e => setD({...d, [k]: e.target.value});
   const close = () => { commit(); onClose(); };
-  return html`<${Sheet} title=${'사진 정보'} onClose=${close} right=${html`<span class="pos">No. ${idx+1} / ${photos.length}</span>`}
+  return html`<${Sheet} title="사진 정보" onClose=${close} right=${html`<span class="pos">No. ${idx+1} / ${photos.length}</span>`}
     foot=${html`<button class="btn danger" onClick=${() => onDelete(p)}>삭제</button><button class="btn primary" onClick=${close}>완료</button>`}>
     <div class="viewer">
       <${Photo} store=${store} aid=${p.asset} alt=${'사진 ' + (idx+1)} />
@@ -465,268 +678,437 @@ function PhotoEditor({store, photos, startId, recentTrades, recentLocs, onSave, 
       <button class="nav r" aria-label="다음 사진" disabled=${idx >= photos.length-1} onClick=${() => go(idx+1)}>${Icon.right}</button>
     </div>
     <div class="field"><label for="pe-trade">공종</label>
-      <input id="pe-trade" class="inp" value=${d.trade || ''} onChange=${set('trade')} placeholder="예: 전기" />
+      <input id="pe-trade" class="inp" value=${d.trade || ''} onChange=${set('trade')} placeholder="예: 타일" />
       <${Suggest} values=${recentTrades} current=${d.trade} onPick=${v => setD({...d, trade:v})} /></div>
     <div class="field"><label for="pe-loc">위치</label>
-      <input id="pe-loc" class="inp" value=${d.location || ''} onChange=${set('location')} placeholder="예: 3층 복도" />
+      <input id="pe-loc" class="inp" value=${d.location || ''} onChange=${set('location')} placeholder="예: 거실 욕실" />
       <${Suggest} values=${recentLocs} current=${d.location} onPick=${v => setD({...d, location:v})} /></div>
-    <div class="field"><label>공정</label><${StageSeg} value=${d.stage || ''} onChange=${v => setD({...d, stage:v})} /></div>
+    <div class="field"><span class="lab">단계</span><${StageSeg} value=${d.stage || ''} onChange=${v => setD({...d, stage:v})} /></div>
     <div class="field"><label for="pe-date">촬영일</label><input id="pe-date" type="date" class="inp" value=${d.date || ''} onChange=${set('date')} /></div>
-    <div class="field"><label for="pe-note">내용 <span class="opt">PDF 내용 칸에 들어가요</span></label><textarea id="pe-note" class="inp" value=${d.note || ''} onChange=${set('note')} placeholder="예: 천장 배관 설치 상태 확인"></textarea></div>
-    <div class="row-actions">
-      <button class="btn" disabled=${idx <= 0} onClick=${() => { commit(); onMove(p, -1); }}>순서 앞으로</button>
-      <button class="btn" disabled=${idx >= photos.length-1} onClick=${() => { commit(); onMove(p, 1); }}>순서 뒤로</button>
-    </div>
+    <div class="field"><label for="pe-note">메모 <span class="opt">PDF 메모 칸에 들어가요</span></label><textarea id="pe-note" class="inp" value=${d.note || ''} onChange=${set('note')} placeholder="예: 바닥 방수 후 타일 시공 전 상태"></textarea></div>
   <//>`;
 }
 
 function BatchEdit({count, recentTrades, recentLocs, onApply, onClose}){
   const [trade, setTrade] = useState(''); const [loc, setLoc] = useState('');
-  const [stage, setStage] = useState(null); const [date, setDate] = useState('');
+  const [stage, setStage] = useState(null); const [date, setDate] = useState(''); const [note, setNote] = useState('');
   return html`<${Sheet} title=${`${count}장 한꺼번에 수정`} onClose=${onClose}
-    foot=${html`<button class="btn primary" onClick=${() => onApply({trade, location:loc, stage, date})}>적용</button>`}>
+    foot=${html`<button class="btn primary" onClick=${() => onApply({trade, location:loc, stage, date, note})}>적용</button>`}>
     <p class="note">비워 둔 칸은 바꾸지 않아요.</p>
     <div class="field"><label for="be-trade">공종</label><input id="be-trade" class="inp" value=${trade} onChange=${e => setTrade(e.target.value)} /><${Suggest} values=${recentTrades} current=${trade} onPick=${setTrade} /></div>
     <div class="field"><label for="be-loc">위치</label><input id="be-loc" class="inp" value=${loc} onChange=${e => setLoc(e.target.value)} /><${Suggest} values=${recentLocs} current=${loc} onPick=${setLoc} /></div>
-    <div class="field"><label>공정</label><${StageSeg} value=${stage} allowKeep=${true} onChange=${setStage} /></div>
+    <div class="field"><span class="lab">단계</span><${StageSeg} value=${stage} allowKeep=${true} onChange=${setStage} /></div>
     <div class="field"><label for="be-date">촬영일</label><input id="be-date" type="date" class="inp" value=${date} onChange=${e => setDate(e.target.value)} /></div>
+    <div class="field"><label for="be-note">메모</label><textarea id="be-note" class="inp" value=${note} onChange=${e => setNote(e.target.value)}></textarea></div>
   <//>`;
 }
 
-function ExportSheet({store, site, photos, selected, onClose, toast}){
-  const [layout, setLayout] = useState('side');
-  const [fitMode, setFit] = useState('cover');
+function ReorderSheet({store, photos, onSave, onClose}){
+  const [list, setList] = useState(photos);
+  const [drag, setDrag] = useState(null); // {id, from, dy}
+  const ROW = 68;
+  const startDrag = (e, id, from) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); setDrag({id, from, y0:e.clientY, dy:0}); };
+  const move = e => { if(drag) setDrag({...drag, dy:e.clientY - drag.y0}); };
+  const end = () => {
+    if(!drag) return;
+    const to = Math.max(0, Math.min(list.length - 1, drag.from + Math.round(drag.dy / ROW)));
+    if(to !== drag.from){ const a = [...list]; const [it] = a.splice(drag.from, 1); a.splice(to, 0, it); setList(a); }
+    setDrag(null);
+  };
+  const target = drag ? Math.max(0, Math.min(list.length - 1, drag.from + Math.round(drag.dy / ROW))) : -1;
+  const shiftOf = i => { if(!drag || i === drag.from) return 0; if(drag.from < target && i > drag.from && i <= target) return -ROW; if(drag.from > target && i < drag.from && i >= target) return ROW; return 0; };
+  const changed = list.some((p, i) => p.id !== photos[i].id);
+  return html`<${Sheet} title="사진 순서" onClose=${onClose}
+    foot=${html`<button class="btn" onClick=${onClose}>취소</button><button class="btn primary" disabled=${!changed} onClick=${() => onSave(list)}>순서 저장</button>`}>
+    <p class="note">오른쪽 ⠿ 손잡이를 잡고 끌어서 순서를 바꾸세요. 이 순서대로 PDF에 들어가요.</p>
+    <div class="reorder" onPointerMove=${move} onPointerUp=${end} onPointerCancel=${end}>
+      ${list.map((p, i) => html`<div key=${p.id} class=${'rrow' + (drag && drag.id === p.id ? ' drag' : '')}
+          style=${{transform:`translateY(${drag && drag.id === p.id ? drag.dy : shiftOf(i)}px)`, transition: drag && drag.id === p.id ? 'none' : 'transform .15s'}}>
+        <div class="t"><${Photo} store=${store} aid=${p.asset} /></div>
+        <div class="txt"><b>No.${i+1} ${[p.trade, p.location].filter(Boolean).join(' · ') || '정보 입력 전'}</b><span>${[stageLabel(p.stage), dotDate(p.date)].filter(Boolean).join(' · ')}</span></div>
+        <button class="grip" aria-label=${`No.${i+1} 끌어서 옮기기`} onPointerDown=${e => startDrag(e, p.id, i)}>${Icon.grip}</button>
+      </div>`)}
+    </div>
+  <//>`;
+}
+
+function ExportSheet({store, site, photos, selected, existing, onFix, onDone, onClose, toast, onGenerate}){
+  const [layout, setLayout] = useState(existing ? existing.layout : 'grid4');
+  const [fitMode, setFit] = useState(existing ? existing.fit : 'cover');
+  const [cover, setCover] = useState(existing ? existing.cover !== false : true);
   const [range, setRange] = useState(selected.length ? 'sel' : 'all');
-  const [title, setTitle] = useState('현장 사진대지');
-  const [busy, setBusy] = useState(0); const [pages, setPages] = useState(null);
-  const [downloads, setDl] = useState(undefined);
-  useEffect(() => { if(NATIVE) return; (window.claude && window.claude.use ? window.claude.use('downloads').catch(() => null) : Promise.resolve(null)).then(setDl); }, []);
-  const list = range === 'sel' ? photos.filter(p => selected.includes(p.id)) : STAGES.includes(range) ? photos.filter(p => p.stage === range) : photos;
-  const per = {side:3, below:2, grid6:6}[layout];
-  const reset = fn => v => { fn(v); setPages(null); };
-  async function build(){
-    if(!list.length) return;
-    setBusy(0.01); setPages(null);
-    try{ const out = await renderPages(site, list, {layout, fit:fitMode, title}, aid => store.url(aid), v => setBusy(Math.max(.02, v))); setPages(out); }
+  const [title, setTitle] = useState(existing ? existing.title : `${site.name} 사진대지`);
+  const [busy, setBusy] = useState(0);
+  const list = range === 'sel' ? photos.filter(p => selected.includes(p.id))
+    : range.startsWith('st:') ? photos.filter(p => p.stage === range.slice(3))
+    : range.startsWith('tr:') ? photos.filter(p => p.trade === range.slice(3)) : photos;
+  const missing = list.filter(p => missingOf(p).length);
+  const pages = Math.ceil(list.length / perPage(layout)) + (cover ? 1 : 0);
+  const stageCounts = STAGES.map(s => [s, photos.filter(p => p.stage === s).length]).filter(x => x[1]);
+  const trades = [...new Set(photos.map(p => p.trade).filter(Boolean))];
+  async function go(){
+    if(!list.length || busy) return;
+    setBusy(0.01);
+    try{ await onGenerate({layout, fit:fitMode, cover, title}, list, v => setBusy(Math.max(.02, v))); }
     catch(e){ toast('PDF를 만들지 못했어요. 사진 수를 줄여서 다시 해 보세요.'); }
     setBusy(0);
   }
-  const makePdf = () => {
-    const pdf = new window.jspdf.jsPDF({unit:'mm', format:'a4', compress:true});
-    pages.forEach((u, i) => { if(i) pdf.addPage(); pdf.addImage(u, 'JPEG', 0, 0, 210, 297, undefined, 'FAST'); });
-    return pdf;
-  };
-  const fileName = () => `${(site.name || '현장').replace(/[\\/:*?"<>|]/g,' ').trim()}_사진대지_${today().replace(/-/g,'')}.pdf`;
-  function nativeOut(kind){
-    const b64 = makePdf().output('datauristring').split(',')[1];
-    const r = kind === 'share' ? NATIVE.sharePdf(b64, fileName()) : NATIVE.savePdf(b64, fileName());
-    if(kind === 'save') toast(r && r.startsWith('ok') ? `저장했어요 · ${r.slice(3)}` : 'PDF를 저장하지 못했어요');
-    else if(!(r && r.startsWith('ok'))) toast('공유하지 못했어요');
-  }
-  async function save(){
-    const pdf = makePdf(); const name = fileName();
-    try{ await downloads.save({filename:name, data:pdf.output('blob')}); toast('PDF를 저장했어요'); }
-    catch(e){ if(e && e.code === 'declined') return; if(e && e.code === 'rate_limited') toast('저장 창이 이미 열려 있어요'); else toast('이 화면에서는 파일 저장을 쓸 수 없어요'); }
-  }
-  const stageCounts = STAGES.map(s => [s, photos.filter(p => p.stage === s).length]).filter(x => x[1]);
-  return html`<${Sheet} title="사진대지 PDF" onClose=${onClose}
-    foot=${pages ? (NATIVE ? html`<button class="btn" onClick=${() => setPages(null)}>설정</button><button class="btn" onClick=${() => nativeOut('share')}>공유</button><button class="btn primary" onClick=${() => nativeOut('save')}>${Icon.pdf} 저장</button>`
-        : html`<button class="btn" onClick=${() => setPages(null)}>설정 바꾸기</button><button class="btn primary" disabled=${!downloads} onClick=${save}>${Icon.pdf} PDF 저장</button>`)
-      : html`<button class="btn primary" disabled=${!list.length || busy > 0} onClick=${build}>${busy ? '만드는 중…' : `미리보기 만들기 · ${Math.ceil(list.length / per)}쪽`}</button>`}>
-    ${pages ? html`
-      ${!NATIVE && downloads === null && html`<p class="note">이 화면에서는 파일 저장을 쓸 수 없어요. claude.ai 앱이나 웹에서 열어 주세요.</p>`}
-      <div class="previews">${pages.map((u, i) => html`<img key=${i} src=${u} alt=${`${i+1}쪽 미리보기`} />`)}</div>`
-    : html`
-      <div class="field"><label>양식</label>
-        <div class="layouts">
-          ${[['side','3장','사진 옆에 표'],['below','2장','사진 아래 표'],['grid6','6장','격자형']].map(([k, a, b]) => html`
-            <button type="button" key=${k} class=${'lay' + (layout === k ? ' on' : '')} aria-pressed=${layout === k} onClick=${() => reset(setLayout)(k)}>
-              <span class=${'mini ' + k}>${Array.from({length:{side:3,below:2,grid6:6}[k]}, (_, i) => html`<i key=${i}></i>`)}</span>
-              <span>쪽당 ${a}</span><small>${b}</small></button>`)}
-        </div></div>
-      <div class="field"><label>넣을 사진</label>
-        <div class="sugg">
-          <button type="button" class=${'chip' + (range === 'all' ? ' on' : '')} onClick=${() => setRange('all')}>전체 <span class="n">${photos.length}</span></button>
-          ${selected.length > 0 && html`<button type="button" class=${'chip' + (range === 'sel' ? ' on' : '')} onClick=${() => setRange('sel')}>선택한 사진 <span class="n">${selected.length}</span></button>`}
-          ${stageCounts.map(([s, n]) => html`<button type="button" key=${s} class=${'chip' + (range === s ? ' on' : '')} onClick=${() => setRange(s)}>${s} <span class="n">${n}</span></button>`)}
-        </div></div>
-      <div class="field"><label>사진 맞춤</label>
-        <div class="seg" style=${{gridTemplateColumns:'1fr 1fr'}}>
-          <button type="button" class=${fitMode === 'cover' ? 'on' : ''} onClick=${() => setFit('cover')}>칸에 꽉 채우기</button>
-          <button type="button" class=${fitMode === 'contain' ? 'on' : ''} onClick=${() => setFit('contain')}>잘리지 않게</button>
-        </div></div>
-      <div class="field"><label for="ex-title">문서 제목</label><input id="ex-title" class="inp" value=${title} onChange=${e => setTitle(e.target.value)} /></div>
-      ${busy > 0 && html`<div class="progress" aria-label="진행률"><i style=${{width: Math.round(busy*100) + '%'}}></i></div>`}
-      <p class="note">A4 세로 · 사진 순서대로 No.가 붙어요.</p>`}
+  return html`<${Sheet} title=${existing ? 'PDF 다시 생성' : 'PDF 생성'} onClose=${onClose}
+    foot=${html`<button class="btn primary" disabled=${!list.length || busy > 0} onClick=${go}>${Icon.pdf} ${busy ? `만드는 중… ${Math.round(busy*100)}%` : `PDF 생성하기 · ${pages}쪽`}</button>`}>
+    <div class="info-card"><div class="title"><span>사진대지 생성 준비</span><span class="tag">${layoutName(layout)}</span></div>
+      <div class="stats"><span class="tag">사진 <b>${list.length}</b>장</span>${missing.length > 0 && html`<span class="tag" style=${{color:'var(--warn)'}}>미입력 <b style=${{color:'var(--warn)'}}>${missing.length}</b>장</span>`}</div></div>
+    ${missing.length > 0 && html`<div class="warn-card">
+      <div class="title">보고서 전 보완 필요</div>
+      <p>사진은 저장되어 있어요. 빠진 정보를 채우면 보고서가 더 완성도 있게 나와요.</p>
+      ${missing.slice(0, 12).map(p => html`<button key=${p.id} class="miss" onClick=${() => onFix(p.id)}>
+        <span class="t"><${Photo} store=${store} aid=${p.asset} /></span>
+        <span><b>${missingOf(p).join('·')} 미입력</b><span>No.${photos.indexOf(p) + 1} · ${dotDate(p.date)}</span></span>${Icon.chev}</button>`)}
+      ${missing.length > 12 && html`<p>외 ${missing.length - 12}장</p>`}
+    </div>`}
+    <div class="field"><label for="ex-title">보고서명</label><input id="ex-title" class="inp" value=${title} onChange=${e => setTitle(e.target.value)} /></div>
+    <div class="field"><span class="lab">사진대지 템플릿</span>
+      <div class="templates">${LAYOUTS.map(l => html`<button type="button" key=${l.k} class=${'tpl' + (layout === l.k ? ' on' : '')} aria-pressed=${layout === l.k} onClick=${() => setLayout(l.k)}>
+        <span class=${'mini ' + l.k}>${Array.from({length:l.n}, (_, i) => html`<i key=${i}></i>`)}</span>
+        <span><b>${l.name}</b><small>${l.desc}</small></span><span class="ck"></span></button>`)}</div></div>
+    <div class="switch-row"><span><b>표지 포함</b><small>첫 페이지에 보고서 표지를 추가해요.</small></span><${Switch} on=${cover} onChange=${setCover} label="표지 포함" /></div>
+    ${!existing && html`<div class="field"><span class="lab">넣을 사진</span>
+      <div class="sugg">
+        <button type="button" class=${'chip' + (range === 'all' ? ' on' : '')} onClick=${() => setRange('all')}>전체 <span class="n">${photos.length}</span></button>
+        ${selected.length > 0 && html`<button type="button" class=${'chip' + (range === 'sel' ? ' on' : '')} onClick=${() => setRange('sel')}>선택한 사진 <span class="n">${selected.length}</span></button>`}
+        ${stageCounts.map(([s, n]) => html`<button type="button" key=${s} class=${'chip' + (range === 'st:' + s ? ' on' : '')} onClick=${() => setRange('st:' + s)}>${stageLabel(s)} <span class="n">${n}</span></button>`)}
+        ${trades.map(t => html`<button type="button" key=${t} class=${'chip' + (range === 'tr:' + t ? ' on' : '')} onClick=${() => setRange('tr:' + t)}>${t} <span class="n">${photos.filter(p => p.trade === t).length}</span></button>`)}
+      </div></div>`}
+    <div class="field"><span class="lab">사진 맞춤</span>
+      <div class="seg" style=${{gridTemplateColumns:'1fr 1fr'}}>
+        <button type="button" class=${fitMode === 'cover' ? 'on' : ''} onClick=${() => setFit('cover')}>칸에 꽉 채우기</button>
+        <button type="button" class=${fitMode === 'contain' ? 'on' : ''} onClick=${() => setFit('contain')}>잘리지 않게</button>
+      </div></div>
+    ${busy > 0 && html`<div class="progress" aria-label="진행률"><i style=${{width: Math.round(busy*100) + '%'}}></i></div>`}
   <//>`;
 }
 
-function Confirm({title, body, action, onYes, onClose}){
-  return html`<${Sheet} title=${title} onClose=${onClose}
-    foot=${html`<button class="btn" onClick=${onClose}>취소</button><button class="btn primary" style=${{background:'var(--danger)', borderColor:'var(--danger)', color:'#fff'}} onClick=${onYes}>${action}</button>`}>
-    <p style=${{margin:0}}>${body}</p><//>`;
+function ReportView({store, report, previews, onAction, onRegen, onDelete, onClose}){
+  return html`<${Sheet} title="보고서 미리보기" onClose=${onClose}
+    foot=${NATIVE ? html`<button class="btn" onClick=${() => onAction(report, 'print')}>${Icon.print} 인쇄</button><button class="btn primary" onClick=${() => onAction(report, 'share')}>${Icon.share} 공유하기</button>`
+      : html`<button class="btn primary" onClick=${() => onAction(report, 'save')}>${Icon.save} PDF 저장</button>`}>
+    <div class="info-card"><div class="title"><span>${report.title}</span></div>
+      <div class="stats"><span class="tag">${layoutName(report.layout)}</span><span class="tag"><b>${report.pages}</b>쪽</span><span class="tag">사진 <b>${report.photoCount}</b>장</span><span class="tag">${dotDate(ymd(new Date(report.createdAt)))}</span></div></div>
+    ${previews ? html`<div class="previews">${previews.map((u, i) => html`<img key=${i} src=${u} alt=${`${i+1}쪽 미리보기`} />`)}</div>`
+      : html`<p class="note">미리보기는 PDF를 만든 직후에만 보여요. ${NATIVE ? '열기를 누르면 PDF 보기 앱에서 열려요.' : ''}</p>`}
+    <div class="row-actions">
+      ${NATIVE && html`<button class="btn" onClick=${() => onAction(report, 'open')}>${Icon.open} 열기</button><button class="btn" onClick=${() => onAction(report, 'save')}>${Icon.save} 기기에 저장</button>`}
+      <button class="btn" onClick=${() => onRegen(report)}>${Icon.redo} PDF 다시 생성</button>
+      <button class="btn danger" onClick=${() => onDelete(report)}>${Icon.trash} 보고서 삭제</button>
+    </div>
+  <//>`;
+}
+
+function BackupSheet({counts, busy, onBackup, onRestore, onClose}){
+  const fileRef = useRef(null);
+  return html`<${Sheet} title="백업 · 복원" onClose=${onClose}>
+    <div class="info-card"><div class="title">지금 저장된 내용</div>
+      <div class="stats"><span class="tag">현장 <b>${counts.sites}</b></span><span class="tag">사진 <b>${counts.photos}</b></span></div>
+      <p class="note">${NATIVE ? '사진은 이 폰 안에만 저장돼요. 앱을 지우거나 폰을 바꾸기 전에 백업 파일을 만들어 두세요.' : '백업 파일 하나에 현장 정보와 사진이 모두 들어가요.'}</p></div>
+    <div class="field"><span class="lab">백업 파일 만들기</span>
+      <div class=${NATIVE ? 'two' : ''}>
+        <button class="btn" disabled=${!!busy || !counts.photos && !counts.sites} onClick=${() => onBackup('save')}>${Icon.save} ${NATIVE ? '폰에 저장' : '백업 파일 저장'}</button>
+        ${NATIVE && html`<button class="btn" disabled=${!!busy || !counts.photos && !counts.sites} onClick=${() => onBackup('share')}>${Icon.share} 드라이브·카톡으로</button>`}
+      </div>
+      <p class="note">${NATIVE ? '"드라이브·카톡으로"를 누르고 Google 드라이브를 고르면 클라우드에 보관돼요.' : ''}</p></div>
+    <div class="field"><span class="lab">백업에서 복원</span>
+      <button class="btn" disabled=${!!busy} onClick=${() => fileRef.current.click()}>${Icon.backup} 백업 파일 고르기</button>
+      <input ref=${fileRef} id="restore-input" class="hidden-input" type="file" accept=".zip,application/zip" tabIndex="-1" aria-hidden="true" onChange=${e => { const f = e.target.files[0]; e.target.value = ''; if(f) onRestore(f); }} />
+      <p class="note">이미 있는 현장·사진은 그대로 두고, 없는 것만 더해요.</p></div>
+    ${busy && html`<p class="note" role="status">${busy}</p>`}
+  <//>`;
 }
 
 /* ---------- screens ---------- */
-function SiteList({store, sites, photosBy, onOpen, onNew}){
+function Home({store, sites, photosBy, reportsBy, counts, recent, onOpen, onNew, onContinue, onAddPhotos, onReport, q, setQ}){
   if(!sites.length) return html`<div class="empty">
-    <div class="sheet-mock" aria-hidden="true"><div class="t"></div>${[0,1,2].map(i => html`<div class="row" key=${i}><div class="ph"></div><div class="tb"><i></i><i></i><i></i><i></i></div></div>`)}</div>
+    <div class="sheet-mock" aria-hidden="true"><div class="t"></div>${[0,1].map(i => html`<div class="row" key=${i}><div class="c"><div class="ph"></div><div class="tb"></div></div><div class="c"><div class="ph"></div><div class="tb"></div></div></div>`)}</div>
     <h2>현장을 만들고 사진을 찍어 보세요</h2>
-    <p>사진마다 공종·위치·공정·내용을 적어 두면 A4 사진대지 PDF로 바로 만들어져요.</p>
-    <button class="btn primary" onClick=${onNew}>${Icon.plus} 첫 현장 만들기</button></div>`;
-  return html`<div>
-    <div class="section-label">현장 ${sites.length}곳</div>
-    <div class="sites">${sites.map(s => {
-      const ps = photosBy[s.id] || []; const cover = ps[ps.length - 1];
-      return html`<button class="site" key=${s.id} onClick=${() => onOpen(s.id)}>
-        <div class="thumb">${cover ? html`<${Photo} store=${store} aid=${cover.asset} />` : Icon.camera}</div>
-        <div class="site-body">
-          <div class="site-name">${s.name}</div>
-          <div class="site-sub">${[s.client, s.address].filter(Boolean).join(' · ') || '발주처·주소 미입력'}</div>
-          <div class="meta"><span class="tag">사진 <b>${ps.length}</b>장</span>
-            ${(s.start || s.end) && html`<span class="tag">${dotDate(s.start)} ~ ${dotDate(s.end)}</span>`}</div>
-        </div></button>`; })}
-    </div></div>`;
+    <p>사진마다 공종·위치·단계·메모를 적어 두면 A4 사진대지 PDF로 바로 만들어져요.</p>
+    <button class="btn primary" onClick=${onNew}>${Icon.plus} 새 현장 만들기</button></div>`;
+  const ql = q.trim().toLowerCase();
+  const shown = ql ? sites.filter(s => [s.name, s.address, s.manager, s.client, s.contractor].some(v => (v || '').toLowerCase().includes(ql))) : sites;
+  return html`<div class="stack">
+    <div class="stats"><span class="tag">현장 <b>${counts.sites}</b></span><span class="tag">사진 <b>${counts.photos}</b></span><span class="tag">보고서 <b>${counts.reports}</b></span></div>
+    <button class="btn primary block" onClick=${onNew}>${Icon.plus} 새 현장 만들기</button>
+    ${recent && html`<div class="hero"><div><small>최근 현장</small><b>${recent.name}</b></div>
+      <button class="btn primary" onClick=${() => onContinue(recent.id)}>${Icon.camera} 사진 촬영 계속하기</button></div>`}
+    <div class="search">${Icon.search}<input id="site-q" class="inp" type="search" value=${q} onChange=${e => setQ(e.target.value)} placeholder="현장명, 주소, 담당자 검색" aria-label="현장 검색" /></div>
+    <div class="section-label" style=${{margin:'4px 0 0'}}>최근 현장</div>
+    ${shown.length ? html`<div class="sites">${shown.map(s => {
+      const ps = photosBy[s.id] || []; const cover = ps[ps.length - 1]; const rn = (reportsBy[s.id] || []).length;
+      return html`<div class="site" key=${s.id}>
+        <button class="site-main" onClick=${() => onOpen(s.id)}>
+          <div class="thumb">${cover ? html`<${Photo} store=${store} aid=${cover.asset} />` : Icon.camera}</div>
+          <div class="site-body"><div class="site-name">${s.name}</div>
+            <div class="site-sub">${[s.address, s.manager && '담당 ' + s.manager].filter(Boolean).join(' · ') || '주소 미입력'}</div>
+            <div class="site-sub">사진 ${ps.length}장 · 보고서 ${rn}개</div></div>
+          <span class="chev">${Icon.chev}</span></button>
+        <div class="site-acts"><button class="btn sm" onClick=${() => onAddPhotos(s.id)}>${Icon.camera} 사진 추가</button><button class="btn sm" disabled=${!ps.length} onClick=${() => onReport(s.id)}>${Icon.pdf} 보고서 생성</button></div>
+      </div>`; })}</div>` : html`<div class="hint">'${q}'에 맞는 현장이 없어요</div>`}
+  </div>`;
 }
 
-function SiteScreen({store, site, photos, filter, setFilter, selectMode, selected, toggleSel, onOpenPhoto}){
-  const counts = Object.fromEntries(STAGES.map(s => [s, photos.filter(p => p.stage === s).length]));
-  const shown = filter === 'all' ? photos : photos.filter(p => p.stage === filter);
+function SiteScreen({store, site, photos, reports, tab, setTab, filter, setFilter, selectMode, selected, toggleSel, onOpenPhoto, onOpenReport, onReportAction}){
   const numberOf = useMemo(() => Object.fromEntries(photos.map((p, i) => [p.id, i + 1])), [photos]);
+  const trades = [...new Set(photos.map(p => p.trade).filter(Boolean))];
+  const ql = filter.q.trim().toLowerCase();
+  const shown = photos.filter(p => (filter.stage === 'all' || p.stage === filter.stage) && (filter.trade === 'all' || p.trade === filter.trade)
+    && (!filter.missing || missingOf(p).length) && (!ql || [p.trade, p.location, p.note, dotDate(p.date), stageLabel(p.stage)].some(v => (v || '').toLowerCase().includes(ql))));
+  const missingN = photos.filter(p => missingOf(p).length).length;
+  const set = (k, v) => setFilter({...filter, [k]: v});
   return html`<div>
-    <div class="site-head">
-      <div class="sub">${[site.client && '발주처 ' + site.client, site.contractor && '시공사 ' + site.contractor].filter(Boolean).join(' · ')}</div>
-      ${(site.address || site.start) && html`<div class="sub">${[site.address, (site.start || site.end) && `${dotDate(site.start)} ~ ${dotDate(site.end)}`].filter(Boolean).join(' · ')}</div>`}
+    <div class="tabs" role="tablist">
+      <button role="tab" aria-selected=${tab === 'photos'} class=${tab === 'photos' ? 'on' : ''} onClick=${() => setTab('photos')}>사진 ${photos.length}</button>
+      <button role="tab" aria-selected=${tab === 'reports'} class=${tab === 'reports' ? 'on' : ''} onClick=${() => setTab('reports')}>보고서 ${reports.length}</button>
     </div>
-    <div class="filters" role="tablist">
-      <button class=${'chip' + (filter === 'all' ? ' on' : '')} onClick=${() => setFilter('all')}>전체 <span class="n">${photos.length}</span></button>
-      ${STAGES.map(s => html`<button key=${s} class=${'chip' + (filter === s ? ' on' : '')} onClick=${() => setFilter(s)}>${s} <span class="n">${counts[s]}</span></button>`)}
-    </div>
-    ${shown.length ? html`<div class="grid">${shown.map(p => html`
-      <button key=${p.id} class=${'tile' + (selected.includes(p.id) ? ' sel' : '')} onClick=${() => selectMode ? toggleSel(p.id) : onOpenPhoto(p.id)}
-        aria-label=${`사진 ${numberOf[p.id]} ${p.trade || ''} ${p.location || ''}`}>
-        <div class="img"><${Photo} store=${store} aid=${p.asset} />
-          <span class="no">No.${numberOf[p.id]}</span>
-          ${p.stage && html`<span class=${'stage st-' + p.stage}>${p.stage}</span>`}
-          ${selectMode && html`<span class="check">${selected.includes(p.id) && Icon.check}</span>`}</div>
-        <div class="cap"><b>${[p.trade, p.location].filter(Boolean).join(' · ') || html`<span class="muted-i">정보 입력 전</span>`}</b>
-          <span>${[dotDate(p.date), p.note].filter(Boolean).join(' · ')}</span></div>
-      </button>`)}</div>`
-    : html`<div class="hint">${photos.length ? `${filter} 사진이 없어요` : '아래 카메라 또는 앨범 버튼으로 사진을 추가하세요'}</div>`}
+    ${(site.address || site.manager || site.client) && html`<div class="site-head"><div class="sub">${[site.address, site.client, site.manager && '담당 ' + site.manager].filter(Boolean).join(' · ')}</div></div>`}
+    ${tab === 'photos' ? html`
+      ${photos.length > 0 && html`<div class="search" style=${{marginBottom:'10px'}}>${Icon.search}<input id="photo-q" class="inp" type="search" value=${filter.q} onChange=${e => set('q', e.target.value)} placeholder="공종, 위치, 메모, 날짜 검색" aria-label="사진 검색" /></div>
+      <div class="filters">
+        <button class=${'chip' + (filter.stage === 'all' ? ' on' : '')} onClick=${() => set('stage', 'all')}>전체 <span class="n">${photos.length}</span></button>
+        ${STAGES.map(s => html`<button key=${s} class=${'chip' + (filter.stage === s ? ' on' : '')} onClick=${() => set('stage', filter.stage === s ? 'all' : s)}>${stageLabel(s)} <span class="n">${photos.filter(p => p.stage === s).length}</span></button>`)}
+        ${missingN > 0 && html`<button class=${'chip warnc' + (filter.missing ? ' on' : '')} onClick=${() => set('missing', !filter.missing)}>미입력 <span class="n">${missingN}</span></button>`}
+      </div>
+      ${trades.length > 0 && html`<div class="filters">
+        <button class=${'chip' + (filter.trade === 'all' ? ' on' : '')} onClick=${() => set('trade', 'all')}>모든 공종</button>
+        ${trades.map(t => html`<button key=${t} class=${'chip' + (filter.trade === t ? ' on' : '')} onClick=${() => set('trade', filter.trade === t ? 'all' : t)}>${t} <span class="n">${photos.filter(p => p.trade === t).length}</span></button>`)}
+      </div>`}`}
+      ${shown.length ? html`<div class="grid">${shown.map(p => html`
+        <button key=${p.id} class=${'tile' + (selected.includes(p.id) ? ' sel' : '')} onClick=${() => selectMode ? toggleSel(p.id) : onOpenPhoto(p.id)}
+          aria-label=${`사진 ${numberOf[p.id]} ${p.trade || ''} ${p.location || ''}`}>
+          <div class="img"><${Photo} store=${store} aid=${p.asset} />
+            <span class="pill tl">No.${numberOf[p.id]}</span>
+            ${missingOf(p).length > 0 && html`<span class="pill tr">미입력</span>`}
+            ${p.stage && html`<span class=${'pill bl st-' + p.stage}>${stageLabel(p.stage)}</span>`}
+            ${selectMode && html`<span class="check">${selected.includes(p.id) && Icon.check}</span>`}</div>
+          <div class="cap"><b>${[p.trade, p.location].filter(Boolean).join(' · ') || html`<span class="muted-i">정보 입력 전</span>`}</b>
+            <span>${[dotDate(p.date), p.note].filter(Boolean).join(' · ')}</span></div>
+        </button>`)}</div>`
+      : html`<div class="hint">${photos.length ? '조건에 맞는 사진이 없어요' : '아래 사진 촬영 또는 앨범 버튼으로 사진을 등록하세요'}</div>`}`
+    : html`${reports.length ? html`<div class="reports">${reports.map(r => html`<div class="report" key=${r.id}>
+        <button class="report-top" onClick=${() => onOpenReport(r)}>
+          <span class="doc-ic">${Icon.pdf}</span>
+          <span style=${{minWidth:0}}><b style=${{display:'block', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>${r.title}</b>
+            <span class="note">${dotDate(ymd(new Date(r.createdAt)))} · ${layoutName(r.layout)} · ${r.pages}쪽 · 사진 ${r.photoCount}장</span></span></button>
+        <div class="report-acts">
+          ${NATIVE ? html`<button class="btn sm" onClick=${() => onReportAction(r, 'open')}>${Icon.open} 열기</button><button class="btn sm" onClick=${() => onReportAction(r, 'share')}>${Icon.share} 공유</button><button class="btn sm" onClick=${() => onReportAction(r, 'print')}>${Icon.print} 인쇄</button>`
+            : html`<button class="btn sm" onClick=${() => onReportAction(r, 'save')}>${Icon.save} PDF 저장</button><button class="btn sm" onClick=${() => onOpenReport(r)}>자세히</button>`}
+        </div></div>`)}</div>`
+      : html`<div class="hint">아직 만든 보고서가 없어요. 아래 '보고서 생성'을 눌러 보세요.</div>`}`}
   </div>`;
 }
 
 /* ---------- app ---------- */
+const NO_FILTER = {stage:'all', trade:'all', q:'', missing:false};
 function App(){
   const [store, setStore] = useState(null);
   const [recs, setRecs] = useState(null);
   const [err, setErr] = useState('');
-  const [screen, setScreen] = useState({name:'list'});
+  const [screen, setScreen] = useState({name:'home'});
+  const [tab, setTab] = useState('photos');
   const [sheet, setSheet] = useState(null);
-  const [filter, setFilter] = useState('all');
+  const [editOver, setEditOver] = useState(null);
+  const [filter, setFilter] = useState(NO_FILTER);
+  const [homeQ, setHomeQ] = useState('');
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState([]);
+  const [pending, setPending] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [backupBusy, setBackupBusy] = useState('');
+  const [previews, setPreviews] = useState({});
   const [toastMsg, setToastMsg] = useState('');
   const toastT = useRef(null);
   const camRef = useRef(null), albRef = useRef(null);
-  const toast = m => { setToastMsg(m); clearTimeout(toastT.current); toastT.current = setTimeout(() => setToastMsg(''), 2600); };
+  const toast = m => { setToastMsg(m); clearTimeout(toastT.current); toastT.current = setTimeout(() => setToastMsg(''), 2800); };
 
   useEffect(() => {
     let unsub = null, done = false;
     const timer = setTimeout(() => { if(!done) setErr('저장소 연결이 늦어지고 있어요. 잠시 후 다시 열어 주세요.'); }, 12000);
-    initStore().then(s => { setStore(s); unsub = s.subscribe(list => { done = true; clearTimeout(timer); setErr(''); setRecs(list); }, e => { done = true; clearTimeout(timer); setErr('저장된 내용을 불러오지 못했어요.'); setRecs(r => r || []); }); });
+    initStore().then(s => { setStore(s); unsub = s.subscribe(list => { done = true; clearTimeout(timer); setErr(''); setRecs(list); }, () => { done = true; clearTimeout(timer); setErr('저장된 내용을 불러오지 못했어요.'); setRecs(r => r || []); }); });
     return () => { unsub && unsub(); clearTimeout(timer); };
   }, []);
 
-  const sites = useMemo(() => (recs || []).filter(r => r.kind === 'site').sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)), [recs]);
-  const photosBy = useMemo(() => { const m = {}; (recs || []).filter(r => r.kind === 'photo').forEach(p => (m[p.siteId] = m[p.siteId] || []).push(p)); Object.values(m).forEach(a => a.sort((x, y) => x.order - y.order)); return m; }, [recs]);
+  const all = recs || [];
+  const sites = useMemo(() => all.filter(r => r.kind === 'site').sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)), [recs]);
+  const photosBy = useMemo(() => { const m = {}; all.filter(r => r.kind === 'photo').forEach(p => (m[p.siteId] = m[p.siteId] || []).push(p)); Object.values(m).forEach(a => a.sort((x, y) => x.order - y.order)); return m; }, [recs]);
+  const reportsBy = useMemo(() => { const m = {}; all.filter(r => r.kind === 'report').forEach(p => (m[p.siteId] = m[p.siteId] || []).push(p)); Object.values(m).forEach(a => a.sort((x, y) => y.createdAt - x.createdAt)); return m; }, [recs]);
+  const counts = {sites:sites.length, photos:all.filter(r => r.kind === 'photo').length, reports:all.filter(r => r.kind === 'report').length};
   const site = screen.name === 'site' ? sites.find(s => s.id === screen.id) : null;
   const photos = site ? (photosBy[site.id] || []) : [];
-  const uniq = (arr, base) => [...new Set([...arr.filter(Boolean).reverse(), ...(base || [])])].slice(0, 12);
+  const reports = site ? (reportsBy[site.id] || []) : [];
+  const uniq = (arr, base) => [...new Set([...arr.filter(Boolean).reverse(), ...(base || [])])].slice(0, 14);
   const recentTrades = uniq(photos.map(p => p.trade), TRADES);
   const recentLocs = uniq(photos.map(p => p.location));
 
-  useEffect(() => { if(screen.name === 'site' && recs && !site) setScreen({name:'list'}); }, [recs, site]);
+  useEffect(() => { if(screen.name === 'site' && recs && !site) setScreen({name:'home'}); }, [recs, site]);
 
   const touchSite = s => store.put({...s, updatedAt: Date.now()});
+  const openSite = (id, nextTab) => { setScreen({name:'site', id}); setTab(nextTab || 'photos'); setFilter(NO_FILTER); setSelectMode(false); setSelected([]); window.scrollTo(0, 0); };
+  const goHome = () => { setScreen({name:'home'}); setSelectMode(false); setSelected([]); };
+
   async function saveSite(f){
     const now = Date.now();
-    if(f.id){ await store.put({...f, kind:'site', updatedAt:now}); toast('저장했어요'); }
-    else { const id = uid(); await store.put({...f, id, kind:'site', createdAt:now, updatedAt:now}); setScreen({name:'site', id}); }
-    setSheet(null);
+    if(f.id){ await store.put({...f, kind:'site', updatedAt:now}); toast('저장했어요'); setSheet(null); }
+    else { const id = uid(); await store.put({...f, id, kind:'site', createdAt:now, updatedAt:now}); openSite(id); setSheet({type:'register'}); }
   }
   async function deleteSite(s){
-    const ps = photosBy[s.id] || [];
-    setSheet(null); setScreen({name:'list'});
-    for(const p of ps){ await store.del(p.id); store.delBlob(p.asset); }
+    const ps = photosBy[s.id] || [], rs = reportsBy[s.id] || [];
+    setSheet(null); goHome();
+    for(const p of [...ps, ...rs]){ await store.del(p.id); if(p.asset) store.delBlob(p.asset); }
     await store.del(s.id); toast('현장을 삭제했어요');
   }
-  async function addFiles(files, openAfter){
-    files = [...files].filter(f => f.type.startsWith('image/') || /\.(jpe?g|png|webp|heic)$/i.test(f.name));
-    if(!files.length || !site) return;
-    const last = photos[photos.length - 1] || {};
-    let order = (last.order || 0) + 1, added = [], fail = 0;
-    for(let i = 0; i < files.length; i++){
-      if(files.length > 1) toast(`사진 올리는 중 ${i + 1}/${files.length}`);
+
+  /* photo registration */
+  async function addFiles(files){
+    files = [...files].filter(f => (f.type || '').startsWith('image/') || /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name || ''));
+    if(!files.length) return;
+    if(!sheet || sheet.type !== 'register') setSheet({type:'register'});
+    if(files.length > 1) toast(`사진 ${files.length}장 준비 중`);
+    for(const f of files){
       try{
-        const {blob, w, h} = await prepImage(files[i]);
-        const asset = await store.addBlob(blob);
-        const lm = files[i].lastModified ? new Date(files[i].lastModified) : new Date();
-        const rec = {id:uid(), kind:'photo', siteId:site.id, asset, w, h, order:order++, trade:last.trade || '', location:last.location || '', stage:last.stage || '', date:ymd(lm), note:'', createdAt:Date.now()};
-        await store.put(rec); added.push(rec);
-      }catch(e){ fail++; }
+        const {blob, w, h} = await prepImage(f);
+        const lm = f.lastModified ? new Date(f.lastModified) : new Date();
+        setPending(p => [...p, {key:uid(), blob, w, h, url:URL.createObjectURL(blob), date:ymd(lm)}]);
+      }catch(e){ toast('읽지 못한 사진이 있어요'); }
     }
-    if(added.length) touchSite(site);
-    toast(fail ? `${added.length}장 추가, ${fail}장 실패` : `${added.length}장 추가했어요`);
-    if(openAfter && added.length === 1) setSheet({type:'photo', id:added[0].id});
   }
+  const removePending = key => setPending(p => { const it = p.find(x => x.key === key); if(it) URL.revokeObjectURL(it.url); return p.filter(x => x.key !== key); });
+  const clearPending = () => { pending.forEach(p => URL.revokeObjectURL(p.url)); setPending([]); };
+  async function savePending(v){
+    if(!site || !pending.length) return;
+    setSaving(true);
+    let order = ((photos[photos.length - 1] || {}).order || 0) + 1, ok = 0;
+    for(let i = 0; i < pending.length; i++){
+      const p = pending[i];
+      if(pending.length > 2) toast(`저장하는 중 ${i + 1}/${pending.length}`);
+      try{
+        const asset = await store.addBlob(p.blob, 'image/jpeg');
+        await store.put({id:uid(), kind:'photo', siteId:site.id, asset, w:p.w, h:p.h, order:order++, trade:v.trade.trim(), location:v.location.trim(), stage:v.stage || '', note:v.note.trim(), date:p.date, createdAt:Date.now()});
+        ok++;
+      }catch(e){}
+    }
+    touchSite(site); clearPending(); setSaving(false); setSheet(null); setTab('photos');
+    toast(ok === pending.length ? `${ok}장 저장했어요` : `${ok}장 저장, ${pending.length - ok}장 실패`);
+  }
+  const lastPhoto = photos[photos.length - 1] || {};
+
   const savePhoto = p => store.put(p);
-  async function movePhoto(p, dir){
-    const i = photos.findIndex(x => x.id === p.id), j = i + dir; if(j < 0 || j >= photos.length) return;
-    const q = photos[j];
-    await Promise.all([store.put({...p, order:q.order}), store.put({...q, order:p.order})]);
-  }
   async function deletePhotos(ids){
-    for(const id of ids){ const p = photos.find(x => x.id === id); if(p){ await store.del(p.id); store.delBlob(p.asset); } }
-    setSelected([]); setSelectMode(false); setSheet(null); toast(`${ids.length}장 삭제했어요`);
+    for(const id of ids){ const p = all.find(x => x.id === id); if(p){ await store.del(p.id); store.delBlob(p.asset); } }
+    setSelected([]); setSelectMode(false); setSheet(s => s && s.type === 'export' ? s : null); setEditOver(null); toast(`${ids.length}장 삭제했어요`);
   }
   async function batchApply(v){
     const ps = photos.filter(p => selected.includes(p.id));
-    await Promise.all(ps.map(p => store.put({...p, ...(v.trade ? {trade:v.trade} : {}), ...(v.location ? {location:v.location} : {}), ...(v.stage !== null ? {stage:v.stage} : {}), ...(v.date ? {date:v.date} : {})})));
+    await Promise.all(ps.map(p => store.put({...p, ...(v.trade ? {trade:v.trade} : {}), ...(v.location ? {location:v.location} : {}), ...(v.stage !== null ? {stage:v.stage} : {}), ...(v.date ? {date:v.date} : {}), ...(v.note ? {note:v.note} : {})})));
     setSheet(null); setSelectMode(false); setSelected([]); toast(`${ps.length}장 수정했어요`);
   }
+  async function saveOrder(list){
+    await Promise.all(list.map((p, i) => p.order !== i + 1 ? store.put({...p, order:i + 1}) : null));
+    setSheet(null); toast('순서를 저장했어요');
+  }
   const toggleSel = id => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
-  const openSite = id => { setScreen({name:'site', id}); setFilter('all'); setSelectMode(false); setSelected([]); window.scrollTo(0, 0); };
 
+  /* reports */
+  async function generate(opts, list, onProgress, existing){
+    const pages = await renderPages(site, list, opts, aid => store.url(aid), onProgress);
+    const blob = pdfBlob(pages);
+    const asset = await store.addBlob(blob, 'application/pdf');
+    const rec = {id: existing ? existing.id : uid(), kind:'report', siteId:site.id, title:opts.title || `${site.name} 사진대지`, layout:opts.layout, fit:opts.fit, cover:opts.cover,
+      photoIds:list.map(p => p.id), pages:pages.length, photoCount:list.length, asset, createdAt:Date.now()};
+    if(existing && existing.asset) store.delBlob(existing.asset);
+    await store.put(rec); touchSite(site);
+    setPreviews(pv => ({...pv, [rec.id]: pages}));
+    setTab('reports'); setSheet({type:'report', id:rec.id});
+  }
+  const reportFile = r => `${safeName(r.title)}_${ymd(new Date(r.createdAt)).replace(/-/g,'')}.pdf`;
+  async function reportAction(r, action){
+    try{ const b = await store.getBlob(r.asset); await outputFile(b, reportFile(r), 'application/pdf', action, toast); }
+    catch(e){ toast('PDF 파일을 찾지 못했어요. 다시 생성해 주세요.'); }
+  }
+  async function deleteReport(r){ await store.del(r.id); store.delBlob(r.asset); setSheet(null); toast('보고서를 삭제했어요'); }
+
+  /* backup */
+  async function backup(action){
+    try{
+      const recsOut = all.filter(r => r.kind === 'site' || r.kind === 'photo');
+      const files = [{name:'records.json', blob:new Blob([JSON.stringify({app:'sangkyu-photo-log', version:1, exportedAt:new Date().toISOString(), records:recsOut})], {type:'application/json'})}];
+      const ps = recsOut.filter(r => r.kind === 'photo');
+      for(let i = 0; i < ps.length; i++){
+        setBackupBusy(`사진 모으는 중 ${i + 1}/${ps.length}`);
+        try{ files.push({name:`photos/${ps[i].asset}.jpg`, blob: await store.getBlob(ps[i].asset)}); }catch(e){}
+      }
+      setBackupBusy('백업 파일 만드는 중');
+      const zip = await makeZip(files);
+      setBackupBusy('');
+      await outputFile(zip, `${APP_NAME.replace(/\s/g,'')}_백업_${today().replace(/-/g,'')}.zip`, 'application/zip', action, toast);
+    }catch(e){ setBackupBusy(''); toast('백업 파일을 만들지 못했어요'); }
+  }
+  async function restore(file){
+    try{
+      setBackupBusy('백업 파일 읽는 중');
+      const z = await readZip(file);
+      const data = JSON.parse(new TextDecoder().decode(z['records.json']));
+      if(!data || !Array.isArray(data.records)) throw new Error('bad');
+      const have = new Set(all.map(r => r.id));
+      let ns = 0, np = 0, skip = 0;
+      for(const r of data.records.filter(r => r.kind === 'site')){ if(have.has(r.id)){ skip++; continue; } await store.put(r); ns++; }
+      const ps = data.records.filter(r => r.kind === 'photo');
+      for(let i = 0; i < ps.length; i++){
+        const r = ps[i]; if(have.has(r.id)){ skip++; continue; }
+        setBackupBusy(`사진 복원 중 ${i + 1}/${ps.length}`);
+        const bytes = z[`photos/${r.asset}.jpg`]; if(!bytes) continue;
+        const asset = await store.addBlob(new Blob([bytes], {type:'image/jpeg'}), 'image/jpeg');
+        await store.put({...r, asset}); np++;
+      }
+      setBackupBusy(''); toast(`복원했어요 · 현장 ${ns}곳, 사진 ${np}장${skip ? ` (이미 있는 ${skip}개 건너뜀)` : ''}`);
+    }catch(e){ setBackupBusy(''); toast('백업 파일을 읽지 못했어요. 이 앱에서 만든 백업인지 확인해 주세요.'); }
+  }
+
+  /* back button (app) */
   const backRef = useRef(null);
   backRef.current = () => {
     if(sheetStack.length){ sheetStack[sheetStack.length - 1](); return true; }
     if(selectMode){ setSelectMode(false); setSelected([]); return true; }
-    if(screen.name === 'site'){ setScreen({name:'list'}); return true; }
+    if(screen.name === 'site'){ goHome(); return true; }
     return false;
   };
   useEffect(() => { window.__onBack = () => backRef.current(); }, []);
 
   if(!recs) return html`<div class="loading"><div class="spin"></div>${err || '불러오는 중'}</div>`;
 
+  const closeRegister = () => { if(pending.length) setSheet({type:'discard'}); else setSheet(null); };
+  const reportOpen = sheet && sheet.type === 'report' ? all.find(r => r.id === sheet.id) : null;
+  const regenFor = sheet && sheet.type === 'regen' ? all.find(r => r.id === sheet.id) : null;
+
   return html`<${React.Fragment}>
     <header class="top"><div class="wrap">
       ${site ? html`
-        <button class="icon-btn" aria-label="현장 목록으로" onClick=${() => { setScreen({name:'list'}); setSelectMode(false); setSelected([]); }}>${Icon.back}</button>
-        <h1>${site.name}</h1>
-        ${photos.length > 0 && html`<button class="btn ghost" onClick=${() => { setSelectMode(!selectMode); setSelected([]); }}>${selectMode ? '선택 끝' : '선택'}</button>`}
+        <button class="icon-btn" aria-label="현장 목록으로" onClick=${goHome}>${Icon.back}</button>
+        <h1><span class="eyebrow">현장 상세</span>${site.name}</h1>
+        ${tab === 'photos' && photos.length > 1 && !selectMode && html`<button class="icon-btn" aria-label="사진 순서 바꾸기" onClick=${() => setSheet({type:'reorder'})}>${Icon.order}</button>`}
+        ${tab === 'photos' && photos.length > 0 && html`<button class="btn ghost sm" onClick=${() => { setSelectMode(!selectMode); setSelected([]); }}>${selectMode ? '선택 끝' : '선택'}</button>`}
         <button class="icon-btn" aria-label="현장 정보 수정" onClick=${() => setSheet({type:'site'})}>${Icon.edit}</button>`
       : html`
-        <div class="brand"><span class="mark">${Icon.mark}</span>현장 사진대지</div>
-        <span class="spacer"></span>
+        <div class="brand"><span class="mark">${Icon.mark}</span>${APP_NAME}</div>
         ${!NATIVE && html`<span class="mode"><span class=${'dot' + (store.mode === 'cloud' ? '' : ' warn')}></span>${store.mode === 'cloud' ? '계정에 저장' : store.mode === 'local' ? '이 기기에만 저장' : '임시 저장'}</span>`}
-        ${sites.length > 0 && html`<button class="btn primary" onClick=${() => setSheet({type:'newsite'})}>${Icon.plus} 새 현장</button>`}`}
+        <button class="icon-btn" aria-label="백업 · 복원" onClick=${() => setSheet({type:'backup'})}>${Icon.backup}</button>`}
     </div></header>
 
     <main><div class="wrap">
       ${err && html`<p class="note" role="status">${err}</p>`}
-      ${site ? html`<${SiteScreen} store=${store} site=${site} photos=${photos} filter=${filter} setFilter=${setFilter} selectMode=${selectMode} selected=${selected} toggleSel=${toggleSel} onOpenPhoto=${id => setSheet({type:'photo', id})} />`
-        : html`<${SiteList} store=${store} sites=${sites} photosBy=${photosBy} onOpen=${openSite} onNew=${() => setSheet({type:'newsite'})} />`}
+      ${site ? html`<${SiteScreen} store=${store} site=${site} photos=${photos} reports=${reports} tab=${tab} setTab=${setTab} filter=${filter} setFilter=${setFilter}
+          selectMode=${selectMode} selected=${selected} toggleSel=${toggleSel} onOpenPhoto=${id => setSheet({type:'photo', id})}
+          onOpenReport=${r => setSheet({type:'report', id:r.id})} onReportAction=${reportAction} />`
+        : html`<${Home} store=${store} sites=${sites} photosBy=${photosBy} reportsBy=${reportsBy} counts=${counts} recent=${sites[0]} q=${homeQ} setQ=${setHomeQ}
+          onOpen=${id => openSite(id)} onNew=${() => setSheet({type:'newsite'})}
+          onContinue=${id => { openSite(id); camRef.current.click(); }}
+          onAddPhotos=${id => { openSite(id); setSheet({type:'register'}); }}
+          onReport=${id => { openSite(id); setSheet({type:'export'}); }} />`}
     </div></main>
 
     ${site && html`<nav class="bar" aria-label="사진 작업"><div class="wrap">
@@ -736,22 +1118,36 @@ function App(){
         <button class="btn" disabled=${!selected.length} onClick=${() => setSheet({type:'export'})}>${Icon.pdf} PDF</button>
         <button class="btn danger" disabled=${!selected.length} onClick=${() => setSheet({type:'confirm-photos'})}>삭제</button>`
       : html`
-        <button class="btn primary" onClick=${() => camRef.current.click()}>${Icon.camera} 카메라</button>
+        <button class="btn primary" onClick=${() => camRef.current.click()}>${Icon.camera} 사진 촬영</button>
         <button class="btn" onClick=${() => albRef.current.click()}>${Icon.album} 앨범</button>
-        <button class="btn" disabled=${!photos.length} onClick=${() => setSheet({type:'export'})}>${Icon.pdf} PDF</button>`}
+        <button class="btn" disabled=${!photos.length} onClick=${() => setSheet({type:'export'})}>${Icon.pdf} 보고서 생성</button>`}
     </div></nav>`}
-    <input ref=${camRef} id="cam-input" class="hidden-input" type="file" accept="image/*" capture="environment" tabIndex="-1" aria-hidden="true" onChange=${e => { addFiles(e.target.files, true); e.target.value = ''; }} />
-    <input ref=${albRef} id="album-input" class="hidden-input" type="file" accept="image/*" multiple tabIndex="-1" aria-hidden="true" onChange=${e => { addFiles(e.target.files, false); e.target.value = ''; }} />
+    <input ref=${camRef} id="cam-input" class="hidden-input" type="file" accept="image/*" capture="environment" tabIndex="-1" aria-hidden="true" onChange=${e => { addFiles(e.target.files); e.target.value = ''; }} />
+    <input ref=${albRef} id="album-input" class="hidden-input" type="file" accept="image/*" multiple tabIndex="-1" aria-hidden="true" onChange=${e => { addFiles(e.target.files); e.target.value = ''; }} />
 
     ${sheet && sheet.type === 'newsite' && html`<${SiteForm} onSave=${saveSite} onClose=${() => setSheet(null)} />`}
     ${sheet && sheet.type === 'site' && site && html`<${SiteForm} site=${site} onSave=${saveSite} onDelete=${() => setSheet({type:'confirm-site'})} onClose=${() => setSheet(null)} />`}
-    ${sheet && sheet.type === 'confirm-site' && site && html`<${Confirm} title="현장 삭제" body=${`'${site.name}' 현장과 사진 ${photos.length}장을 모두 지워요. 되돌릴 수 없어요.`} action="삭제" onYes=${() => deleteSite(site)} onClose=${() => setSheet(null)} />`}
+    ${sheet && sheet.type === 'confirm-site' && site && html`<${Confirm} title="현장 삭제" body=${`'${site.name}' 현장과 사진 ${photos.length}장, 보고서 ${reports.length}개를 모두 지워요. 되돌릴 수 없어요.`} action="삭제" onYes=${() => deleteSite(site)} onClose=${() => setSheet(null)} />`}
     ${sheet && sheet.type === 'confirm-photos' && html`<${Confirm} title="사진 삭제" body=${`선택한 사진 ${selected.length}장을 지워요. 되돌릴 수 없어요.`} action="삭제" onYes=${() => deletePhotos(selected)} onClose=${() => setSheet(null)} />`}
     ${sheet && sheet.type === 'confirm-photo' && html`<${Confirm} title="사진 삭제" body="이 사진을 지워요. 되돌릴 수 없어요." action="삭제" onYes=${() => deletePhotos([sheet.id])} onClose=${() => setSheet({type:'photo', id:sheet.id})} />`}
+    ${sheet && sheet.type === 'register' && site && html`<${RegisterSheet} key=${'rg' + site.id} site=${site} pending=${pending} defaults=${lastPhoto} recentTrades=${recentTrades} recentLocs=${recentLocs} busy=${saving}
+        onRemove=${removePending} onCamera=${() => camRef.current.click()} onAlbum=${() => albRef.current.click()} onSave=${savePending} onClose=${closeRegister} />`}
+    ${sheet && sheet.type === 'discard' && html`<${Confirm} title="저장하지 않은 사진" body=${`아직 저장하지 않은 사진 ${pending.length}장을 버릴까요?`} action="버리기" onYes=${() => { clearPending(); setSheet(null); }} onClose=${() => setSheet({type:'register'})} />`}
     ${sheet && sheet.type === 'photo' && html`<${PhotoEditor} key="pe" store=${store} photos=${photos} startId=${sheet.id} recentTrades=${recentTrades} recentLocs=${recentLocs}
-        onSave=${savePhoto} onMove=${movePhoto} onDelete=${p => setSheet({type:'confirm-photo', id:p.id})} onClose=${() => setSheet(null)} />`}
+        onSave=${savePhoto} onDelete=${p => setSheet({type:'confirm-photo', id:p.id})} onClose=${() => setSheet(null)} />`}
     ${sheet && sheet.type === 'batch' && html`<${BatchEdit} count=${selected.length} recentTrades=${recentTrades} recentLocs=${recentLocs} onApply=${batchApply} onClose=${() => setSheet(null)} />`}
-    ${sheet && sheet.type === 'export' && site && html`<${ExportSheet} store=${store} site=${site} photos=${photos} selected=${selectMode ? selected : []} toast=${toast} onClose=${() => setSheet(null)} />`}
+    ${sheet && sheet.type === 'reorder' && html`<${ReorderSheet} store=${store} photos=${photos} onSave=${saveOrder} onClose=${() => setSheet(null)} />`}
+    ${sheet && sheet.type === 'export' && site && html`<${ExportSheet} store=${store} site=${site} photos=${photos} selected=${selectMode ? selected : []} toast=${toast}
+        onFix=${id => setEditOver(id)} onGenerate=${(o, l, pr) => generate(o, l, pr)} onClose=${() => setSheet(null)} />`}
+    ${sheet && sheet.type === 'regen' && site && regenFor && html`<${ExportSheet} store=${store} site=${site} existing=${regenFor} toast=${toast}
+        photos=${regenFor.photoIds.map(id => photos.find(p => p.id === id)).filter(Boolean)} selected=${[]}
+        onFix=${id => setEditOver(id)} onGenerate=${(o, l, pr) => generate(o, l, pr, regenFor)} onClose=${() => setSheet({type:'report', id:regenFor.id})} />`}
+    ${reportOpen && html`<${ReportView} store=${store} report=${reportOpen} previews=${previews[reportOpen.id]} onAction=${reportAction}
+        onRegen=${r => setSheet({type:'regen', id:r.id})} onDelete=${r => setSheet({type:'confirm-report', id:r.id})} onClose=${() => setSheet(null)} />`}
+    ${sheet && sheet.type === 'confirm-report' && html`<${Confirm} title="보고서 삭제" body="이 보고서 PDF를 지워요. 사진은 그대로 남아요." action="삭제" onYes=${() => { const r = all.find(x => x.id === sheet.id); if(r) deleteReport(r); else setSheet(null); }} onClose=${() => setSheet({type:'report', id:sheet.id})} />`}
+    ${sheet && sheet.type === 'backup' && html`<${BackupSheet} counts=${counts} busy=${backupBusy} onBackup=${backup} onRestore=${restore} onClose=${() => setSheet(null)} />`}
+    ${editOver && html`<${PhotoEditor} key=${'eo' + editOver} store=${store} photos=${photos} startId=${editOver} recentTrades=${recentTrades} recentLocs=${recentLocs}
+        onSave=${savePhoto} onDelete=${p => { setEditOver(null); deletePhotos([p.id]); }} onClose=${() => setEditOver(null)} />`}
     ${toastMsg && html`<div class="toast" role="status">${toastMsg}</div>`}
   <//>`;
 }
