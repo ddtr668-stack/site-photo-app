@@ -1130,7 +1130,10 @@ function label(c, text, x, y, col, halo, px) {
 // 펜 글씨는 perfect-freehand로 실제 펜처럼(필압·속도에 따라 굵기 변화, 끝이 가늘어짐) 그린다.
 const PF = window.PerfectFreehand;
 // 굵기·크기는 도면 기준(U = 도면 치수 글자 높이)으로 정한다 → 어떤 배율에서 그려도 도면 위에서 같은 굵기
-const SIZES = { pen: [0.06, 0.1, 0.16], ball: [0.07, 0.11, 0.17], hl: [0.8, 1.2, 1.8], cloud: [0.06, 0.1, 0.15], text: [0.8, 1.1, 1.5], arrow: [0.06, 0.1, 0.15] };
+// 굵기·크기: 쓸 때 화면에서 보이는 굵기(px)로 정하고 도면에 고정한다 → 이후 확대/축소하면 도면과 같이 변함.
+// 단, 너무 축소/확대한 상태에서 그려도 지나치게 굵거나 가늘지 않게 도면 글자 높이(U) 기준으로 상·하한을 둔다.
+const SIZES = { pen: [0.9, 2.2, 5], ball: [1, 2.4, 5], hl: [10, 16, 24], cloud: [1.5, 2.5, 4], text: [12, 16, 22], arrow: [1.6, 2.6, 4] };
+const BASE_LIMIT = { pen: [0.002, 0.6], ball: [0.002, 0.6], hl: [0.004, 0.12], cloud: [0.003, 0.6], text: [0.005, 0.25], arrow: [0.003, 0.6] };
 const outlineCache = new WeakMap(), imgCache = new WeakMap(), imgLoading = new WeakSet();
 const ink = $('#ink');
 const ictx = ink.getContext('2d');
@@ -1138,7 +1141,12 @@ let inkClearAfterFrame = false;
 
 function markColor(c, bg) { return c === 'fg' ? (bg === 'white' ? '#111111' : '#F2F4F5') : c; }
 function wpt(p) { return toWorld(p.x, p.y); }
-function sizeOf(kind) { return SIZES[kind][state.mk.size] * ((state.scene && state.scene.U) || 1); } // 도면 길이
+function sizeOf(kind) { // 도면 길이
+  const U = (state.scene && state.scene.U) || 1;
+  const [lo, hi] = BASE_LIMIT[kind];
+  const base = Math.min(Math.max(DPR / state.view.s, lo * U), hi * U); // 화면 1px의 도면 길이 (상·하한)
+  return SIZES[kind][state.mk.size] * base;
+}
 const pxW = (px) => px * DPR / state.view.s; // 지금 화면의 px → 도면 길이
 function snap(m) { // 되돌리기용 복사 (사진 데이터는 그대로 참조)
   const o = { ...m };
@@ -1197,17 +1205,38 @@ const BLOCKS = {
       { t: '덕트', x: 75, y: 40, s: 19 },
     ],
   },
-  out: {
-    name: '실외기', mm: [900, 514], box: [0, 0, 140, 80],
+  stand2: {
+    name: '스탠드 1200', mm: [1200, 400], box: [0, 0, 180, 60],
     parts: [
-      { d: 'M0 0H140V80H0Z', sw: 3, fill: 1 },
-      { d: 'M19 40a31 31 0 1 0 62 0a31 31 0 1 0 -62 0', sw: 2.4 },
-      { d: 'M29 40a21 21 0 1 0 42 0a21 21 0 1 0 -42 0 M39 40a11 11 0 1 0 22 0a11 11 0 1 0 -22 0', sw: 1.3 },
-      { d: 'M19 40H81M50 9V71', sw: 1.3 },
-      { d: 'M46.3 40a3.7 3.7 0 1 0 7.4 0a3.7 3.7 0 1 0 -7.4 0', solid: 1 },
-      { d: 'M96 6V74', sw: 2 },
-      { d: 'M103 32H131M103 40H131M103 48H131M103 56H131M103 64H131', sw: 1.4 },
-      { t: '실외기', x: 117, y: 18, s: 12 },
+      { d: 'M14 0H166A14 14 0 0 1 180 14V46A14 14 0 0 1 166 60H14A14 14 0 0 1 0 46V14A14 14 0 0 1 14 0Z', sw: 3, fill: 1 },
+      { d: 'M14 46H166M14 52H166', sw: 1.8 },
+      { d: 'M45 88L37 74L53 74Z M90 92L82 78L98 78Z M135 88L127 74L143 74Z', solid: 1 },
+      { t: '스탠드', x: 90, y: 24, s: 17 },
+    ],
+  },
+  out: {
+    name: '실외기', mm: [1000, 400], box: [0, 0, 150, 60],
+    parts: [
+      { d: 'M0 0H150V60H0Z', sw: 3, fill: 1 },
+      { d: 'M16 30a24 24 0 1 0 48 0a24 24 0 1 0 -48 0', sw: 2.2 },
+      { d: 'M24 30a16 16 0 1 0 32 0a16 16 0 1 0 -32 0 M32 30a8 8 0 1 0 16 0a8 8 0 1 0 -16 0', sw: 1.2 },
+      { d: 'M16 30H64M40 6V54', sw: 1.2 },
+      { d: 'M37 30a3 3 0 1 0 6 0a3 3 0 1 0 -6 0', solid: 1 },
+      { d: 'M80 5V55', sw: 2 },
+      { d: 'M88 30H142M88 37H142M88 44H142M88 51H142', sw: 1.3 },
+      { t: '실외기', x: 115, y: 16, s: 13 },
+    ],
+  },
+  outtop: {
+    name: '상부토출', mm: [1300, 800], box: [0, 0, 136, 84],
+    parts: [
+      { d: 'M0 0H136V84H0Z', sw: 3, fill: 1 },
+      { d: 'M10 36a26 26 0 1 0 52 0a26 26 0 1 0 -52 0 M74 36a26 26 0 1 0 52 0a26 26 0 1 0 -52 0', sw: 2.2 },
+      { d: 'M19 36a17 17 0 1 0 34 0a17 17 0 1 0 -34 0 M28 36a8 8 0 1 0 16 0a8 8 0 1 0 -16 0 M83 36a17 17 0 1 0 34 0a17 17 0 1 0 -34 0 M92 36a8 8 0 1 0 16 0a8 8 0 1 0 -16 0', sw: 1.2 },
+      { d: 'M10 36H62M36 10V62M74 36H126M100 10V62', sw: 1.2 },
+      { d: 'M33 36a3 3 0 1 0 6 0a3 3 0 1 0 -6 0 M97 36a3 3 0 1 0 6 0a3 3 0 1 0 -6 0', solid: 1 },
+      { d: 'M5 68H131', sw: 1.6 },
+      { t: '상부토출', x: 68, y: 76.5, s: 10 },
     ],
   },
 };
@@ -1242,63 +1271,56 @@ function strokeOpts(m) {
 }
 // S펜 만년필: 필압(가볍게=아주 가늘게) × 펜촉 각도(세로획 굵게, 가로·/ 획 가늘게), 끝은 빠르게 가늘어짐
 function nibOutline(m) {
+  // S펜 캘리그라피: 40° 기울어진 납작한 펜촉이 지나간 자리를 칠한다.
+  // 세로·\ 획은 굵고, 가로·/ 획은 가늘고, 획 끝은 비스듬히 잘림. 필압에 따라 펜촉 폭이 바뀐다.
   const pts = m.pts, k = m.sc, ox = pts[0], oy = pts[1];
   const raw = [];
   for (let i = 0; i < pts.length; i += 3) raw.push([(pts[i] - ox) * k, (pts[i + 1] - oy) * k, pts[i + 2]]);
-  if (raw.length === 1) raw.push([raw[0][0] + 0.05, raw[0][1], raw[0][2]]);
-  // 살짝만 다듬기 (글씨 모양 유지)
+  if (raw.length === 1) raw.push([raw[0][0] + 0.05, raw[0][1] - 0.05, raw[0][2]]);
   const sm = [raw[0].slice()];
   for (let i = 1; i < raw.length; i++) {
     const q = sm[i - 1], r = raw[i];
-    sm.push([q[0] + (r[0] - q[0]) * 0.6, q[1] + (r[1] - q[1]) * 0.6, q[2] + (r[2] - q[2]) * 0.35]);
+    sm.push([q[0] + (r[0] - q[0]) * 0.65, q[1] + (r[1] - q[1]) * 0.65, q[2] + (r[2] - q[2]) * 0.4]);
   }
   sm.push(raw[raw.length - 1].slice());
-  // 1px 간격으로 다시 찍기
-  const P = [];
-  P.push(sm[0]);
+  const P = [sm[0]];
   for (let i = 1; i < sm.length; i++) {
     const a = P[P.length - 1], b = sm[i];
     const d = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    const n = Math.floor(d / 0.8);
-    for (let j = 1; j <= n; j++) { const t = j * 0.8 / d; P.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]); }
+    const nn = Math.floor(d / 0.7);
+    for (let j = 1; j <= nn; j++) { const t = j * 0.7 / d; P.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]); }
   }
-  if (P.length < 2) P.push([P[0][0] + 0.05, P[0][1], P[0][2]]);
-  const n = P.length, W0 = m.size, NIB = Math.PI / 4;
-  const ang = [], wid = [];
-  for (let i = 0; i < n; i++) {
-    const a = P[Math.max(0, i - 2)], b = P[Math.min(n - 1, i + 2)];
-    ang.push(Math.atan2(b[1] - a[1], b[0] - a[0]));
-  }
-  for (let i = 0; i < n; i++) {
-    const pr = m.real ? Math.max(0.02, Math.min(1, P[i][2])) : 0.5;
-    const pf = 0.18 + 1.35 * Math.pow(pr, 1.25);
-    const nf = 0.45 + 0.75 * Math.abs(Math.sin(ang[i] - NIB));
-    wid.push(W0 * pf * nf);
-  }
-  // 굵기 부드럽게 + 끝 처리
-  const ws = wid.map((_, i) => { let t = 0, c = 0; for (let j = i - 3; j <= i + 3; j++) if (j >= 0 && j < n) { t += wid[j]; c++; } return t / c; });
-  const tail = Math.min(14, Math.floor(n / 3));
-  for (let j = 0; j < tail; j++) ws[n - 1 - j] *= 0.2 + 0.8 * Math.pow(j / tail, 0.7);
-  const head = Math.min(3, Math.floor(n / 4));
-  for (let j = 0; j < head; j++) ws[j] *= 0.7 + 0.3 * (j / Math.max(1, head));
+  if (P.length < 2) P.push([P[0][0] + 0.05, P[0][1] - 0.05, P[0][2]]);
+  const n = P.length;
+  const W = m.size * 1.9;             // 펜촉 폭 (보통 굵기의 약 2배 → 굵은 획이 확실히 보이게)
+  const tmin = m.size * 0.16;         // 가장 가는 획
+  const NIB = 40 * Math.PI / 180, ex = Math.cos(NIB), ey = Math.sin(NIB);
+  const pr = P.map((q) => (m.real ? Math.max(0.02, Math.min(1, q[2])) : 0.55));
+  const hw = pr.map((_, i) => { let t = 0, c = 0; for (let j = i - 4; j <= i + 4; j++) if (j >= 0 && j < n) { t += pr[j]; c++; } const p = t / c; return W / 2 * (0.38 + 0.85 * Math.pow(p, 1.1)); });
+  const tail = Math.min(8, Math.floor(n / 4));
+  for (let j = 0; j < tail; j++) hw[n - 1 - j] *= 0.55 + 0.45 * (j / tail);
   const path = new Path2D();
-  // 각 점에 원 + 이웃 점 사이를 사다리꼴로 이어 붙인다 (같은 방향으로 감아서 구멍 없이)
-  let ccw = null;
+  const poly = (q) => {
+    let ar = 0;
+    for (let t = 0; t < q.length; t++) { const u = q[t], v = q[(t + 1) % q.length]; ar += u[0] * v[1] - v[0] * u[1]; }
+    if (Math.abs(ar) < 1e-9) return;
+    if (ar < 0) q.reverse(); // 모두 같은 방향으로 감아서 겹쳐도 구멍이 안 생기게
+    path.moveTo(q[0][0] / k, q[0][1] / k);
+    for (let t = 1; t < q.length; t++) path.lineTo(q[t][0] / k, q[t][1] / k);
+    path.closePath();
+  };
   for (let i = 0; i < n - 1; i++) {
     const a = P[i], b = P[i + 1];
-    const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1;
-    const nx = -dy / L, ny = dx / L;
-    const ra = ws[i] / 2, rb = ws[i + 1] / 2;
-    const q = [[a[0] + nx * ra, a[1] + ny * ra], [b[0] + nx * rb, b[1] + ny * rb], [b[0] - nx * rb, b[1] - ny * rb], [a[0] - nx * ra, a[1] - ny * ra]];
-    if (ccw === null) { let ar = 0; for (let t = 0; t < 4; t++) { const u = q[t], v = q[(t + 1) % 4]; ar += u[0] * v[1] - v[0] * u[1]; } ccw = ar > 0; }
-    path.moveTo(q[0][0] / k, q[0][1] / k);
-    for (let t = 1; t < 4; t++) path.lineTo(q[t][0] / k, q[t][1] / k);
-    path.closePath();
+    // 납작한 펜촉이 쓸고 지나간 면
+    poly([[a[0] + ex * hw[i], a[1] + ey * hw[i]], [b[0] + ex * hw[i + 1], b[1] + ey * hw[i + 1]], [b[0] - ex * hw[i + 1], b[1] - ey * hw[i + 1]], [a[0] - ex * hw[i], a[1] - ey * hw[i]]]);
+    // 펜촉 방향으로 움직여도 선이 끊기지 않게 아주 가는 기본 획
+    const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L * tmin / 2, ny = dx / L * tmin / 2;
+    poly([[a[0] + nx, a[1] + ny], [b[0] + nx, b[1] + ny], [b[0] - nx, b[1] - ny], [a[0] - nx, a[1] - ny]]);
   }
-  for (let i = 0; i < n; i++) {
-    const r = ws[i] / 2 / k, x = P[i][0] / k, y = P[i][1] / k;
-    path.moveTo(x + r, y);
-    path.arc(x, y, r, 0, Math.PI * 2, ccw === false);
+  // 펜촉 자국 (시작·끝은 비스듬히 잘린 모양)
+  for (const i of [0, n - 1]) {
+    const a = P[i], t = tmin / 2;
+    poly([[a[0] + ex * hw[i] - ey * t, a[1] + ey * hw[i] + ex * t], [a[0] - ex * hw[i] - ey * t, a[1] - ey * hw[i] + ex * t], [a[0] - ex * hw[i] + ey * t, a[1] - ey * hw[i] - ex * t], [a[0] + ex * hw[i] + ey * t, a[1] + ey * hw[i] - ex * t]]);
   }
   return { path, ox, oy };
 }

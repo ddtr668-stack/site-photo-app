@@ -101,10 +101,10 @@ select { background: var(--panel2); color: var(--ink); border: 0; border-radius:
 .ktools { overflow-x: auto; scrollbar-width: none; }
 .ktools::-webkit-scrollbar { display: none; }
 .ktools button { flex: none; font-size: 13px; padding: 0 12px; }
-.kblk { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-bottom: 8px; }
+.kblk { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 8px; }
 .kblk button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px 5px; border-radius: 10px; background: var(--panel2); color: #9AA4A9; font-size: 12px; font-weight: 700; box-shadow: inset 0 0 0 1px #343C42; }
-.kblk button svg { width: 40px; height: 28px; color: #74C0FC; }
-.kblk button { flex-direction: row; justify-content: center; gap: 6px; padding: 5px 4px; }
+.kblk button svg { width: 38px; height: 24px; color: #74C0FC; }
+.kblk button { padding: 5px 2px 4px; font-size: 11px; white-space: nowrap; }
 .kblk button.on { color: var(--ink); box-shadow: inset 0 0 0 2px var(--accent); }
 .blklabel { flex: 1; min-width: 0; height: 36px; border: 0; border-radius: 10px; background: var(--panel2); color: var(--ink); font: inherit; font-size: 14px; padding: 0 10px; outline: none; }
 .blklabel:focus { box-shadow: 0 0 0 2px var(--accent); }
