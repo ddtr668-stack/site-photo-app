@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Parcelable
 import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
@@ -36,6 +37,8 @@ import java.util.UUID
 class MainActivity : Activity() {
     private lateinit var web: WebView
     private var fileCallback: ValueCallback<Array<Uri>>? = null
+    private var cameraUri: Uri? = null
+    private var cameraFile: File? = null
     private var pageReady = false
     private var pendingJson: String? = null
     private val lock = Any()
@@ -84,11 +87,20 @@ class MainActivity : Activity() {
             override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
                 fileCallback?.onReceiveValue(null)
                 fileCallback = callback
-                val pick = Intent(Intent.ACTION_GET_CONTENT)
-                    .addCategory(Intent.CATEGORY_OPENABLE)
-                    .setType("*/*")
+                cameraUri = null
+                val images = params.acceptTypes?.any { it.startsWith("image") } == true
+                val chooser = if (images) {
+                    // 도면에 넣을 사진: 앨범 또는 카메라
+                    val pick = Intent(Intent.ACTION_GET_CONTENT).addCategory(Intent.CATEGORY_OPENABLE).setType("image/*")
+                    val c = Intent.createChooser(pick, "사진 넣기")
+                    cameraIntent()?.let { c.putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf<Parcelable>(it)) }
+                    c
+                } else {
+                    val pick = Intent(Intent.ACTION_GET_CONTENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*")
+                    Intent.createChooser(pick, "도면 파일 선택 (DWG · DXF)")
+                }
                 return try {
-                    startActivityForResult(Intent.createChooser(pick, "도면 파일 선택 (DWG · DXF)"), REQ_PICK)
+                    startActivityForResult(chooser, REQ_PICK)
                     true
                 } catch (e: Exception) {
                     fileCallback = null
@@ -162,10 +174,24 @@ class MainActivity : Activity() {
         return if (name.isNullOrBlank()) "도면.dwg" else name!!
     }
 
+    /** 카메라로 찍어서 바로 넣기 */
+    private fun cameraIntent(): Intent? {
+        return try {
+            val dir = File(cacheDir, "shots").apply { mkdirs() }
+            val f = File(dir, "shot_${System.currentTimeMillis()}.jpg")
+            val uri = FileProvider.getUriForFile(this, "$packageName.files", f)
+            cameraFile = f
+            cameraUri = uri
+            Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+                .putExtra(MediaStore.EXTRA_OUTPUT, uri)
+                .addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        } catch (e: Exception) { null }
+    }
+
     /** 하루 지난 임시 파일은 지운다. */
     private fun cleanCache() {
         val old = System.currentTimeMillis() - 24L * 3600 * 1000
-        listOf("incoming", "out").forEach { d ->
+        listOf("incoming", "out", "shots").forEach { d ->
             File(cacheDir, d).listFiles()?.forEach { f ->
                 if (f.lastModified() < old) f.deleteRecursively()
             }
@@ -177,9 +203,17 @@ class MainActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         val cb = fileCallback ?: return
         fileCallback = null
-        if (requestCode != REQ_PICK || resultCode != RESULT_OK || data == null) { cb.onReceiveValue(null); return }
-        val u = data.data
-        cb.onReceiveValue(if (u != null) arrayOf(u) else null)
+        if (requestCode != REQ_PICK || resultCode != RESULT_OK) { cb.onReceiveValue(null); return }
+        val u = data?.data
+        val cam = cameraUri
+        val shot = cameraFile
+        cameraUri = null
+        cameraFile = null
+        when {
+            u != null -> cb.onReceiveValue(arrayOf(u))
+            cam != null && shot != null && shot.exists() && shot.length() > 0 -> cb.onReceiveValue(arrayOf(cam))
+            else -> cb.onReceiveValue(null)
+        }
     }
 
     @Deprecated("Deprecated in Java")

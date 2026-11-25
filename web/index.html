@@ -37,6 +37,7 @@
 <!-- 도면 화면 -->
 <section id="viewer" hidden>
   <canvas id="cv"></canvas>
+  <canvas id="ink"></canvas>
   <header class="topbar">
     <button id="btnHome" class="ico" aria-label="처음 화면"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <div class="title"><div id="fname" class="fname"></div><div id="finfo" class="finfo"></div></div>
@@ -62,21 +63,23 @@
   <div id="kpanel" class="mpanel kpanel" hidden>
     <div class="krow">
       <div class="seg ktools" data-k="tool">
-        <button data-v="pen" class="on">펜</button><button data-v="cloud">구름</button><button data-v="text">글자</button><button data-v="erase">지우개</button>
+        <button data-v="pen" class="on">펜</button><button data-v="hl">형광펜</button><button data-v="cloud">구름</button><button data-v="text">글자</button><button data-v="photo">사진</button><button data-v="erase">지우개</button>
       </div>
     </div>
     <div class="krow">
       <div class="colors">
+        <button data-c="fg" style="--c:#F2F4F5" aria-label="검정/흰색"></button>
         <button data-c="#E03131" class="on" style="--c:#E03131" aria-label="빨강"></button>
         <button data-c="#1C7ED6" style="--c:#1C7ED6" aria-label="파랑"></button>
         <button data-c="#2F9E44" style="--c:#2F9E44" aria-label="초록"></button>
-        <button data-c="fg" style="--c:#F2F4F5" aria-label="검정/흰색"></button>
+        <button data-c="#FAB005" style="--c:#FAB005" aria-label="노랑"></button>
       </div>
-      <div class="seg kwidth" data-k="width"><button data-v="2.5" class="on">가늘게</button><button data-v="5">굵게</button></div>
+      <div class="seg ksize" data-k="size"><button data-v="0" aria-label="가늘게"><i style="--d:4px"></i></button><button data-v="1" class="on" aria-label="보통"><i style="--d:7px"></i></button><button data-v="2" aria-label="굵게"><i style="--d:11px"></i></button></div>
     </div>
     <div class="mbtns">
       <button id="kUndo">되돌리기</button>
       <button id="kClear">모두 지우기</button>
+      <button id="kPen" class="toggle wide" aria-pressed="false">S펜 전용</button>
     </div>
     <div id="khint" class="msub khint"></div>
   </div>
@@ -123,8 +126,10 @@
 <div id="busy" class="busy" hidden><div class="spin"></div><div id="busyText">도면 여는 중…</div></div>
 <div id="toast" class="toast" hidden></div>
 <input type="file" id="file" accept=".dwg,.dxf,.DWG,.DXF" hidden>
+<input type="file" id="photoFile" accept="image/*" hidden>
 
 <script src="vendor/jspdf.umd.min.js" defer></script>
+<script src="vendor/perfect-freehand.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
