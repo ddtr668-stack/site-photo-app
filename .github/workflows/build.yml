@@ -1,8 +1,9 @@
-name: Build APK
+name: Build DWG Viewer APK
 
+# 이 브랜치(dwg-viewer)는 '상규 도면뷰어' 전용. 사진대지 앱(main)과는 따로 빌드된다.
 on:
   push:
-    branches: [main]
+    branches: [dwg-viewer]
   workflow_dispatch:
 
 permissions:
@@ -21,7 +22,10 @@ jobs:
         with:
           gradle-version: "8.9"
       - name: Build
-        run: gradle :app:assembleRelease --no-daemon --stacktrace
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee build.log
       - name: Rename APK
         run: cp app/build/outputs/apk/release/app-release.apk "dwgviewer-1.0.${{ github.run_number }}.apk"
       - uses: actions/upload-artifact@v4
@@ -30,7 +34,19 @@ jobs:
           path: dwgviewer-*.apk
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.${{ github.run_number }}
+          tag_name: dwgviewer-v1.0.${{ github.run_number }}
           name: 상규 도면뷰어 1.0.${{ github.run_number }}
           files: dwgviewer-*.apk
-          make_latest: true
+          make_latest: false
+      # 빌드가 실패하면 기록을 dwg-viewer-log 브랜치에 남긴다
+      - name: Save build log on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p /tmp/log && cp build.log /tmp/log/ 2>/dev/null || echo "no build.log" > /tmp/log/build.log
+          cd /tmp/log
+          git init -q -b dwg-viewer-log
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A && git commit -q -m "build log run ${{ github.run_number }}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" dwg-viewer-log
