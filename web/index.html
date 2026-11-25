@@ -63,18 +63,21 @@
   <div id="kpanel" class="mpanel kpanel" hidden>
     <div class="krow">
       <div class="seg ktools" data-k="tool">
-        <button data-v="pen" class="on">펜</button><button data-v="hl">형광펜</button><button data-v="cloud">구름</button><button data-v="text">글자</button><button data-v="photo">사진</button><button data-v="erase">지우개</button>
+        <button data-v="pen" class="on">펜</button><button data-v="hl">형광펜</button><button data-v="cloud">구름</button><button data-v="arrow">화살표</button><button data-v="leader">지시선</button><button data-v="text">글자</button><button data-v="blk">블럭</button><button data-v="photo">사진</button><button data-v="erase">지우개</button>
       </div>
     </div>
+    <div id="kblk" class="kblk" hidden><button data-b="4way" class="on"><svg viewBox="-24 -24 168 168" aria-hidden="true"><rect x="0" y="0" width="120" height="120" rx="6" fill="currentColor" fill-opacity=".15" stroke="currentColor" stroke-width="6"/><rect x="34" y="34" width="52" height="52" fill="none" stroke="currentColor" stroke-width="5"/><path d="M60 -20 L51 -8 L69 -8 Z M60 140 L51 128 L69 128 Z M-20 60 L-8 51 L-8 69 Z M140 60 L128 51 L128 69 Z" fill="currentColor"/></svg><span>4WAY</span></button><button data-b="1way"><svg viewBox="-10 -14 160 96" aria-hidden="true"><rect x="0" y="0" width="140" height="50" rx="5" fill="currentColor" fill-opacity=".15" stroke="currentColor" stroke-width="5"/><rect x="12" y="33" width="116" height="9" fill="none" stroke="currentColor" stroke-width="4"/><path d="M40 76 L32 62 L48 62 Z M70 76 L62 62 L78 62 Z M100 76 L92 62 L108 62 Z" fill="currentColor"/></svg><span>1WAY</span></button><button data-b="wall"><svg viewBox="-10 -22 160 104" aria-hidden="true"><path d="M-10 -6 H150" stroke="currentColor" stroke-width="5"/><rect x="0" y="0" width="140" height="38" rx="10" fill="currentColor" fill-opacity=".15" stroke="currentColor" stroke-width="5"/><path d="M45 72 L37 58 L53 58 Z M70 76 L62 62 L78 62 Z M95 72 L87 58 L103 58 Z" fill="currentColor"/></svg><span>벽걸이</span></button><button data-b="out"><svg viewBox="-8 -8 156 76" aria-hidden="true"><rect x="0" y="0" width="140" height="60" rx="3" fill="currentColor" fill-opacity=".15" stroke="currentColor" stroke-width="5"/><circle cx="40" cy="30" r="23" fill="none" stroke="currentColor" stroke-width="4"/><path d="M80 10 V50 M95 10 V50 M110 10 V50 M125 10 V50" stroke="currentColor" stroke-width="3"/></svg><span>실외기</span></button></div>
     <div class="krow">
       <div class="colors">
         <button data-c="fg" style="--c:#F2F4F5" aria-label="검정/흰색"></button>
         <button data-c="#E03131" class="on" style="--c:#E03131" aria-label="빨강"></button>
         <button data-c="#1C7ED6" style="--c:#1C7ED6" aria-label="파랑"></button>
         <button data-c="#2F9E44" style="--c:#2F9E44" aria-label="초록"></button>
+        <button data-c="#F08C00" style="--c:#F08C00" aria-label="주황"></button>
         <button data-c="#FAB005" style="--c:#FAB005" aria-label="노랑"></button>
       </div>
       <div class="seg ksize" data-k="size"><button data-v="0" aria-label="가늘게"><i style="--d:4px"></i></button><button data-v="1" class="on" aria-label="보통"><i style="--d:7px"></i></button><button data-v="2" aria-label="굵게"><i style="--d:11px"></i></button></div>
+      <input id="blkLabel" class="blklabel" placeholder="이름 (예: 23kW)" aria-label="블럭 이름" hidden>
     </div>
     <div class="mbtns">
       <button id="kUndo">되돌리기</button>
@@ -82,6 +85,9 @@
       <button id="kPen" class="toggle wide" aria-pressed="false">S펜 전용</button>
     </div>
     <div id="khint" class="msub khint"></div>
+  </div>
+  <div id="blkbar" class="blkbar" hidden>
+    <button data-a="rot">↻ 90°</button><button data-a="name">이름</button><button data-a="dup">복제</button><button data-a="del" class="danger">삭제</button>
   </div>
 
   <nav class="tools">
