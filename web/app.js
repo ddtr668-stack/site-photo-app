@@ -199,7 +199,7 @@ async function openBytes(buf, name, recentId = null) {
     if (fileId) {
       try {
         const n = await DB.getNotes(fileId);
-        if (n) { state.marks = n.marks || []; state.meas.done = n.meas || []; }
+        if (n) { state.marks = (n.marks || []).filter((m) => m.k !== 'img'); state.meas.done = n.meas || []; }
       } catch (e) {}
     }
     const u = { 1: 'in', 2: 'ft', 4: 'mm', 5: 'cm', 6: 'm' }[model.units];
@@ -339,6 +339,12 @@ function buildScene(md) {
     return { ...t, lines, ux, uy, r };
   });
 
+  // 메모 크기 기준 U = 도면 글자 높이(가운데 값). 글자가 거의 없으면 도면 크기로.
+  const diagF = Math.hypot(W, H);
+  const hs = texts.map((t) => t.uy).filter((v) => v > 0).sort((a, b) => a - b);
+  let U = hs.length >= 5 ? hs[Math.floor(hs.length / 2)] : diagF / 300;
+  U = Math.min(Math.max(U, diagF / 5000), diagF / 40);
+
   // 해치 무늬
   const patterns = md.patterns.map((p) => {
     const path = new Path2D();
@@ -366,7 +372,7 @@ function buildScene(md) {
   for (let i = 0; i < nk; i++) order[fillPos[keys[i]]++] = i;
 
   return {
-    fit, full, cells: cellList, styles: md.styles, colors: md.colors, texts, patterns,
+    fit, full, U, cells: cellList, styles: md.styles, colors: md.colors, texts, patterns,
     snap: { pts: sn, kinds: md.snapKinds, start: counts, order, SG, x0: fit[0], y0: fit[1], cw: scw, ch: sch },
     colorCache: {},
   };
@@ -741,7 +747,7 @@ cv.addEventListener('pointerdown', (ev) => {
   // S펜을 화면에 대면 바로 메모 모드
   if (pen && state.mode === 'pan') setMode('mark');
   if (state.mode === 'mark') {
-    const tapTool = state.mk.tool === 'text' || state.mk.tool === 'photo' || state.mk.tool === 'blk';
+    const tapTool = state.mk.tool === 'text' || state.mk.tool === 'blk';
     const draws = ev.pointerType === 'mouse' ? ev.button === 0 : pen || !state.penOnly || tapTool;
     // S펜 전용일 때 손가락: 화면 이동 (메모를 길게 누르면 옮기기)
     gest = { type: 'mark', start: p, t: performance.now(), pen, erase: penErase(ev), moved: 0, fingerPan: !draws && ev.pointerType !== 'mouse' };
@@ -1123,7 +1129,8 @@ function label(c, text, x, y, col, halo, px) {
 // 메모는 도면 좌표로 저장해서 확대/이동해도 그 자리에 붙어 있다.
 // 펜 글씨는 perfect-freehand로 실제 펜처럼(필압·속도에 따라 굵기 변화, 끝이 가늘어짐) 그린다.
 const PF = window.PerfectFreehand;
-const SIZES = { pen: [1.4, 2.4, 4.2], hl: [12, 20, 30], cloud: [1.5, 2.5, 4], text: [12, 16, 22], arrow: [1.6, 2.6, 4] }; // 만들 때 화면 px
+// 굵기·크기는 도면 기준(U = 도면 치수 글자 높이)으로 정한다 → 어떤 배율에서 그려도 도면 위에서 같은 굵기
+const SIZES = { pen: [0.06, 0.1, 0.16], ball: [0.07, 0.11, 0.17], hl: [0.8, 1.2, 1.8], cloud: [0.06, 0.1, 0.15], text: [0.8, 1.1, 1.5], arrow: [0.06, 0.1, 0.15] };
 const outlineCache = new WeakMap(), imgCache = new WeakMap(), imgLoading = new WeakSet();
 const ink = $('#ink');
 const ictx = ink.getContext('2d');
@@ -1131,7 +1138,7 @@ let inkClearAfterFrame = false;
 
 function markColor(c, bg) { return c === 'fg' ? (bg === 'white' ? '#111111' : '#F2F4F5') : c; }
 function wpt(p) { return toWorld(p.x, p.y); }
-function sizeOf(kind) { return SIZES[kind][state.mk.size]; }
+function sizeOf(kind) { return SIZES[kind][state.mk.size] * ((state.scene && state.scene.U) || 1); } // 도면 길이
 const pxW = (px) => px * DPR / state.view.s; // 지금 화면의 px → 도면 길이
 function snap(m) { // 되돌리기용 복사 (사진 데이터는 그대로 참조)
   const o = { ...m };
@@ -1146,18 +1153,18 @@ const BLOCKS = {
     parts: [
       { d: 'M0 0H120V120H0Z', sw: 3, fill: 1 },
       { d: 'M24 9h72v11h-72Z M24 100h72v11h-72Z M9 24h11v72h-11Z M100 24h11v72h-11Z', sw: 2 },
-      { d: 'M34 34h52v52h-52Z', sw: 2 },
-      { d: 'M34 47h52M34 60h52M34 73h52', sw: 1.2 },
+      { d: 'M30 30h60v60h-60Z', sw: 1.6 },
       { d: 'M60 -20L51 -8L69 -8Z M60 140L51 128L69 128Z M-20 60L-8 51L-8 69Z M140 60L128 51L128 69Z', solid: 1 },
+      { t: '4WAY', x: 60, y: 60, s: 19 },
     ],
   },
   '1way': {
     name: '천장형 1WAY', mm: [1200, 460], box: [0, 0, 140, 50],
     parts: [
       { d: 'M0 0H140V50H0Z', sw: 3, fill: 1 },
-      { d: 'M12 33h116v9h-116Z', sw: 2 },
-      { d: 'M12 10h116M12 18h116M12 26h116', sw: 1.1 },
+      { d: 'M12 35h116v8h-116Z', sw: 2 },
       { d: 'M40 76L32 62L48 62Z M70 76L62 62L78 62Z M100 76L92 62L108 62Z', solid: 1 },
+      { t: '1WAY', x: 70, y: 18, s: 17 },
     ],
   },
   wall: {
@@ -1166,22 +1173,45 @@ const BLOCKS = {
       { d: 'M-10 -6H150', sw: 3 },
       { d: 'M-4 -6l8 -12M10 -6l8 -12M24 -6l8 -12M38 -6l8 -12M52 -6l8 -12M66 -6l8 -12M80 -6l8 -12M94 -6l8 -12M108 -6l8 -12M122 -6l8 -12M136 -6l8 -12', sw: 1.2 },
       { d: 'M0 0H140V38H0Z', sw: 3, fill: 1 },
-      { d: 'M10 29H130', sw: 2 },
+      { d: 'M10 31H130', sw: 2 },
       { d: 'M45 72L37 58L53 58Z M70 76L62 62L78 62Z M95 72L87 58L103 58Z', solid: 1 },
+      { t: '벽걸이', x: 70, y: 15, s: 15 },
+    ],
+  },
+  stand: {
+    name: '스탠드', mm: [600, 400], box: [0, 0, 100, 70],
+    parts: [
+      { d: 'M14 0H86A14 14 0 0 1 100 14V56A14 14 0 0 1 86 70H14A14 14 0 0 1 0 56V14A14 14 0 0 1 14 0Z', sw: 3, fill: 1 },
+      { d: 'M12 56H88M12 62H88', sw: 1.8 },
+      { d: 'M30 100L22 86L38 86Z M50 104L42 90L58 90Z M70 100L62 86L78 86Z', solid: 1 },
+      { t: '스탠드', x: 50, y: 28, s: 17 },
+    ],
+  },
+  duct: {
+    name: '덕트형', mm: [1200, 700], box: [0, 0, 150, 80],
+    parts: [
+      { d: 'M0 0H150V80H0Z', sw: 3, fill: 1, dash: [9, 5] },
+      { d: 'M45 -16h60v16h-60Z M45 80h60v16h-60Z', sw: 2.4 },
+      { d: 'M75 -40V-26 M75 98V108', sw: 2.4 },
+      { d: 'M75 -18L68 -28L82 -28Z M75 118L68 106L82 106Z', solid: 1 },
+      { t: '덕트', x: 75, y: 40, s: 19 },
     ],
   },
   out: {
-    name: '실외기', mm: [900, 330], box: [0, 0, 140, 60],
+    name: '실외기', mm: [900, 514], box: [0, 0, 140, 80],
     parts: [
-      { d: 'M0 0H140V60H0Z', sw: 3, fill: 1 },
-      { d: 'M17 30a23 23 0 1 0 46 0a23 23 0 1 0 -46 0', sw: 2 },
-      { d: 'M40 30C48 22 54 14 46 10M40 30C50 34 58 40 52 47M40 30C32 36 24 42 22 34M40 30C32 24 26 16 32 11', sw: 2 },
-      { d: 'M36.5 30a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0 -7 0', solid: 1 },
-      { d: 'M80 10V50M89 10V50M98 10V50M107 10V50M116 10V50M125 10V50', sw: 1.4 },
+      { d: 'M0 0H140V80H0Z', sw: 3, fill: 1 },
+      { d: 'M19 40a31 31 0 1 0 62 0a31 31 0 1 0 -62 0', sw: 2.4 },
+      { d: 'M29 40a21 21 0 1 0 42 0a21 21 0 1 0 -42 0 M39 40a11 11 0 1 0 22 0a11 11 0 1 0 -22 0', sw: 1.3 },
+      { d: 'M19 40H81M50 9V71', sw: 1.3 },
+      { d: 'M46.3 40a3.7 3.7 0 1 0 7.4 0a3.7 3.7 0 1 0 -7.4 0', solid: 1 },
+      { d: 'M96 6V74', sw: 2 },
+      { d: 'M103 32H131M103 40H131M103 48H131M103 56H131M103 64H131', sw: 1.4 },
+      { t: '실외기', x: 117, y: 18, s: 12 },
     ],
   },
 };
-for (const k in BLOCKS) for (const p of BLOCKS[k].parts) p.path = new Path2D(p.d);
+for (const k in BLOCKS) for (const p of BLOCKS[k].parts) if (p.d) p.path = new Path2D(p.d);
 function mmToWorld(mm) { return mm * 0.001 / (UNIT_M[state.unit] || 0.001); }
 // 블럭 로컬(기호 좌표) → 도면 좌표 행렬
 function blkMatrix(m) {
@@ -1210,6 +1240,68 @@ function strokeOpts(m) {
   if (m.real) return { size, thinning: 0.68, smoothing: 0.62, streamline: 0.38, simulatePressure: false, easing: (t) => Math.sin((t * Math.PI) / 2), start: { cap: true, taper: 0 }, end: { cap: true, taper: 0 }, last: true };
   return { size, thinning: 0.55, smoothing: 0.6, streamline: 0.45, simulatePressure: true, start: { cap: true, taper: size * 3 }, end: { cap: true, taper: size * 4 }, last: true };
 }
+// S펜 만년필: 필압(가볍게=아주 가늘게) × 펜촉 각도(세로획 굵게, 가로·/ 획 가늘게), 끝은 빠르게 가늘어짐
+function nibOutline(m) {
+  const pts = m.pts, k = m.sc, ox = pts[0], oy = pts[1];
+  const raw = [];
+  for (let i = 0; i < pts.length; i += 3) raw.push([(pts[i] - ox) * k, (pts[i + 1] - oy) * k, pts[i + 2]]);
+  if (raw.length === 1) raw.push([raw[0][0] + 0.05, raw[0][1], raw[0][2]]);
+  // 살짝만 다듬기 (글씨 모양 유지)
+  const sm = [raw[0].slice()];
+  for (let i = 1; i < raw.length; i++) {
+    const q = sm[i - 1], r = raw[i];
+    sm.push([q[0] + (r[0] - q[0]) * 0.6, q[1] + (r[1] - q[1]) * 0.6, q[2] + (r[2] - q[2]) * 0.35]);
+  }
+  sm.push(raw[raw.length - 1].slice());
+  // 1px 간격으로 다시 찍기
+  const P = [];
+  P.push(sm[0]);
+  for (let i = 1; i < sm.length; i++) {
+    const a = P[P.length - 1], b = sm[i];
+    const d = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const n = Math.floor(d / 0.8);
+    for (let j = 1; j <= n; j++) { const t = j * 0.8 / d; P.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]); }
+  }
+  if (P.length < 2) P.push([P[0][0] + 0.05, P[0][1], P[0][2]]);
+  const n = P.length, W0 = m.size, NIB = Math.PI / 4;
+  const ang = [], wid = [];
+  for (let i = 0; i < n; i++) {
+    const a = P[Math.max(0, i - 2)], b = P[Math.min(n - 1, i + 2)];
+    ang.push(Math.atan2(b[1] - a[1], b[0] - a[0]));
+  }
+  for (let i = 0; i < n; i++) {
+    const pr = m.real ? Math.max(0.02, Math.min(1, P[i][2])) : 0.5;
+    const pf = 0.18 + 1.35 * Math.pow(pr, 1.25);
+    const nf = 0.45 + 0.75 * Math.abs(Math.sin(ang[i] - NIB));
+    wid.push(W0 * pf * nf);
+  }
+  // 굵기 부드럽게 + 끝 처리
+  const ws = wid.map((_, i) => { let t = 0, c = 0; for (let j = i - 3; j <= i + 3; j++) if (j >= 0 && j < n) { t += wid[j]; c++; } return t / c; });
+  const tail = Math.min(14, Math.floor(n / 3));
+  for (let j = 0; j < tail; j++) ws[n - 1 - j] *= 0.2 + 0.8 * Math.pow(j / tail, 0.7);
+  const head = Math.min(3, Math.floor(n / 4));
+  for (let j = 0; j < head; j++) ws[j] *= 0.7 + 0.3 * (j / Math.max(1, head));
+  const path = new Path2D();
+  // 각 점에 원 + 이웃 점 사이를 사다리꼴로 이어 붙인다 (같은 방향으로 감아서 구멍 없이)
+  let ccw = null;
+  for (let i = 0; i < n - 1; i++) {
+    const a = P[i], b = P[i + 1];
+    const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1;
+    const nx = -dy / L, ny = dx / L;
+    const ra = ws[i] / 2, rb = ws[i + 1] / 2;
+    const q = [[a[0] + nx * ra, a[1] + ny * ra], [b[0] + nx * rb, b[1] + ny * rb], [b[0] - nx * rb, b[1] - ny * rb], [a[0] - nx * ra, a[1] - ny * ra]];
+    if (ccw === null) { let ar = 0; for (let t = 0; t < 4; t++) { const u = q[t], v = q[(t + 1) % 4]; ar += u[0] * v[1] - v[0] * u[1]; } ccw = ar > 0; }
+    path.moveTo(q[0][0] / k, q[0][1] / k);
+    for (let t = 1; t < 4; t++) path.lineTo(q[t][0] / k, q[t][1] / k);
+    path.closePath();
+  }
+  for (let i = 0; i < n; i++) {
+    const r = ws[i] / 2 / k, x = P[i][0] / k, y = P[i][1] / k;
+    path.moveTo(x + r, y);
+    path.arc(x, y, r, 0, Math.PI * 2, ccw === false);
+  }
+  return { path, ox, oy };
+}
 function inkOutline(m) {
   let o = outlineCache.get(m);
   if (o) return o;
@@ -1218,6 +1310,7 @@ function inkOutline(m) {
   return o;
 }
 function buildOutline(m) {
+  if (m.nib) return nibOutline(m);
   const pts = m.pts, k = m.sc, ox = pts[0], oy = pts[1];
   const input = [];
   for (let i = 0; i < pts.length; i += 3) input.push([(pts[i] - ox) * k, (pts[i + 1] - oy) * k, pts[i + 2]]);
@@ -1248,7 +1341,7 @@ function drawHover(p, erase) {
   ictx.clearRect(0, 0, ink.width, ink.height);
   const tool = erase ? 'erase' : state.mk.tool;
   if (tool !== 'pen' && tool !== 'hl' && tool !== 'erase') return;
-  const r = tool === 'erase' ? 16 * DPR : Math.max(2, sizeOf(tool) * DPR / 2);
+  const r = tool === 'erase' ? 16 * DPR : Math.max(1.5 * DPR, sizeOf(tool) * state.view.s / 2);
   ictx.beginPath(); ictx.arc(p.x * DPR, p.y * DPR, r, 0, Math.PI * 2);
   ictx.lineWidth = 1.5 * DPR;
   ictx.strokeStyle = tool === 'erase' ? 'rgba(255,255,255,.85)' : markColor(state.mk.color, state.bg);
@@ -1288,16 +1381,18 @@ function markDown(p, ev, g) {
   if (g.fingerPan) return;
   if (tool === 'pen' || tool === 'hl') {
     const real = ev.pointerType === 'pen' && ev.pressure > 0 && ev.pressure !== 0.5;
-    state.draft = { k: 'ink', pen: tool, c: mk.color, size: sizeOf(tool), sc: s / DPR, real, pts: [w.x, w.y, pressureOf(ev)] };
+    const nib = tool === 'pen' && ev.pointerType === 'pen'; // S펜 = 만년필
+    const sw = sizeOf(nib || tool === 'hl' ? tool : 'ball');
+    state.draft = { k: 'ink', pen: tool, nib, c: mk.color, size: sw * (s / DPR), sc: s / DPR, real, pts: [w.x, w.y, pressureOf(ev)] };
     drawInk();
   } else if (tool === 'cloud') {
-    state.draft = { k: 'cloud', c: mk.color, w: pxW(sizeOf('cloud')), b: [w.x, w.y, w.x, w.y], r: pxW(11) };
+    state.draft = { k: 'cloud', c: mk.color, w: sizeOf('cloud'), b: [w.x, w.y, w.x, w.y], r: sizeOf('cloud') * 6 };
   } else if (tool === 'arrow') {
-    state.draft = { k: 'arw', c: mk.color, w: pxW(sizeOf('arrow')), hs: pxW(12 + sizeOf('arrow') * 2), a: [w.x, w.y], b: [w.x, w.y] };
+    state.draft = { k: 'arw', c: mk.color, w: sizeOf('arrow'), hs: sizeOf('arrow') * 7, a: [w.x, w.y], b: [w.x, w.y] };
   } else if (tool === 'leader') {
     const hit = hitMark(w, (x) => x.k === 'ldr');
     if (hit) { g.edit = hit; return; }
-    state.draft = { k: 'ldr', c: mk.color, w: pxW(1.8), h: pxW(sizeOf('text')), a: [w.x, w.y], b: [w.x, w.y], t: '' };
+    state.draft = { k: 'ldr', c: mk.color, w: sizeOf('text') * 0.07, h: sizeOf('text'), a: [w.x, w.y], b: [w.x, w.y], t: '' };
   } else if (tool === 'erase') {
     state.eraseGroup = [];
     eraseAt(w);
@@ -1658,7 +1753,7 @@ $('#kUndo').addEventListener('click', () => {
 });
 $('#kClear').addEventListener('click', () => {
   if (!state.marks.length) return;
-  if (!confirm('메모·블럭·사진을 모두 지울까요? (되돌리기로 살릴 수 있어요)')) return;
+  if (!confirm('메모와 블럭을 모두 지울까요? (되돌리기로 살릴 수 있어요)')) return;
   state.history.push({ t: 'clear', marks: state.marks });
   state.marks = []; state.sel = null;
   saveNotes(); requestDraw();
@@ -1714,7 +1809,7 @@ function markHint() {
     text: '글자를 넣을 곳을 누르세요 · 써 둔 글자를 누르면 고쳐요',
     blk: '블럭을 고르고 도면을 누르면 놓여요 · 놓은 블럭을 누르면 메뉴',
     photo: '사진을 넣을 곳을 누르세요 · 넣은 사진을 누르면 옮기기/크기/삭제',
-    erase: '지울 메모를 문지르세요 (사진·블럭은 각자 삭제 버튼으로)',
+    erase: '지울 메모를 문지르세요 (블럭은 블럭 메뉴의 삭제로)',
   }[state.mk.tool] + ' · 길게 누르면 옮기기';
 }
 
@@ -1774,7 +1869,7 @@ $('#noteOk').addEventListener('click', () => {
     o.mark.t = t; o.mark.c = state.mk.color;
     saveNotes(); requestDraw();
   } else if (t) {
-    addMark({ k: 'text', c: state.mk.color, h: pxW(sizeOf('text')), x: o.x, y: o.y, t });
+    addMark({ k: 'text', c: state.mk.color, h: sizeOf('text'), x: o.x, y: o.y, t });
   }
 });
 $('#noteDel').addEventListener('click', () => { const o = noteCtx; closeNote(); if (o && o.mark) delMark(o.mark); });
@@ -1854,6 +1949,7 @@ function drawOneMark(c, m, W, H, view, o, isDraft) {
     c.fillStyle = col;
     if (m.pen === 'hl') c.globalAlpha = o.bg === 'white' ? 0.35 : 0.42;
     c.fill(ol.path, 'nonzero');
+    if (m.size / m.sc * s < 1.2 * px) { c.strokeStyle = col; c.lineWidth = 0.8 * px / s; c.stroke(ol.path); } // 아주 멀리서도 선이 보이게
     c.restore();
   } else if (m.k === 'pen') { // 예전 방식 펜 (호환)
     c.beginPath();
@@ -1868,7 +1964,7 @@ function drawOneMark(c, m, W, H, view, o, isDraft) {
     const z = toScreen(Math.max(m.b[0], m.b[2]), Math.min(m.b[1], m.b[3]), view, W, H);
     const w = z.x - a.x, h = z.y - a.y;
     if (w < 1 || h < 1) return;
-    const r = Math.min(Math.max(m.r * s, 5 * px), Math.min(w, h) / 2);
+    const r = Math.min(Math.max(m.r * s, 1.5 * px), Math.min(w, h) / 2);
     const pts = [[a.x, a.y], [z.x, a.y], [z.x, z.y], [a.x, z.y]];
     c.beginPath();
     for (let e = 0; e < 4; e++) {
@@ -1882,14 +1978,14 @@ function drawOneMark(c, m, W, H, view, o, isDraft) {
       }
     }
     c.closePath();
-    c.strokeStyle = col; c.lineWidth = Math.max(m.w * s, 1.3 * px);
+    c.strokeStyle = col; c.lineWidth = Math.max(m.w * s, 0.7 * px);
     c.stroke();
   } else if (m.k === 'arw') {
     const a = toScreen(m.a[0], m.a[1], view, W, H), b = toScreen(m.b[0], m.b[1], view, W, H);
     const L = Math.hypot(b.x - a.x, b.y - a.y);
     if (L < 1) return;
     const ux = (b.x - a.x) / L, uy = (b.y - a.y) / L;
-    const lw = Math.max(m.w * s, 1.4 * px), hs = Math.max(m.hs * s, 8 * px);
+    const lw = Math.max(m.w * s, 0.7 * px), hs = Math.max(m.hs * s, 2 * px);
     const bx = b.x - ux * hs * 0.85, by = b.y - uy * hs * 0.85;
     c.strokeStyle = col; c.lineWidth = lw;
     c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(bx, by); c.stroke();
@@ -1902,11 +1998,11 @@ function drawOneMark(c, m, W, H, view, o, isDraft) {
     const p0 = toScreen(bx[0], bx[3], view, W, H), p1 = toScreen(bx[2], bx[1], view, W, H);
     const right = m.b[0] >= m.a[0];
     const attach = toScreen(right ? bx[0] : bx[2], (bx[1] + bx[3]) / 2, view, W, H);
-    c.strokeStyle = col; c.lineWidth = Math.max(m.w * s, 1.4 * px);
+    c.strokeStyle = col; c.lineWidth = Math.max(m.w * s, 0.7 * px);
     c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(attach.x, attach.y); c.stroke();
-    c.fillStyle = col; c.beginPath(); c.arc(a.x, a.y, Math.max(3 * px, m.w * s * 1.6), 0, Math.PI * 2); c.fill();
-    if (m.t) {
-      const fs = Math.max(m.h * s, 9 * px);
+    c.fillStyle = col; c.beginPath(); c.arc(a.x, a.y, Math.max(0.8 * px, m.w * s * 1.8), 0, Math.PI * 2); c.fill();
+    if (m.t && m.h * s >= 2 * px) {
+      const fs = m.h * s;
       c.fillStyle = o.bg === 'white' ? 'rgba(255,255,255,.94)' : 'rgba(20,24,27,.92)';
       c.fillRect(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
       c.strokeRect(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
@@ -1927,31 +2023,44 @@ function drawOneMark(c, m, W, H, view, o, isDraft) {
     c.save();
     c.setTransform(a, b, cc, d, e, f);
     for (const p of B.parts) {
+      if (p.t) { // 블럭 안 종류 글씨
+        if (p.s * k < 3) continue;
+        c.font = '800 ' + p.s + 'px ' + FONT;
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillStyle = col; c.fillText(p.t, p.x, p.y);
+        c.textAlign = 'left';
+        continue;
+      }
       if (p.solid) { c.fillStyle = col; c.fill(p.path); continue; }
       if (p.fill) { c.globalAlpha = 0.14; c.fillStyle = col; c.fill(p.path); c.globalAlpha = 1; }
-      c.strokeStyle = col; c.lineWidth = Math.max(p.sw, 1.1 * px / k);
+      c.strokeStyle = col; c.lineWidth = Math.max(p.sw, 0.7 * px / k);
+      c.setLineDash(p.dash || []);
       c.stroke(p.path);
+      c.setLineDash([]);
     }
     c.restore();
     if (m.label) {
       const cs = blkCorners(m).map(([x, y]) => toScreen(x, y, view, W, H));
       const bottom = Math.max(...cs.map((q) => q.y)), cx = cs.reduce((t, q) => t + q.x, 0) / 4;
-      const fs = Math.max(Math.min(m.w, m.h) * 0.32 * s, 10 * px);
+      const fs = Math.min(m.w, m.h) * 0.32 * s;
       const ext = Math.max(m.w, m.h) * 0.12 * s;
-      c.font = '700 ' + fs.toFixed(1) + 'px ' + FONT;
-      c.textAlign = 'center'; c.textBaseline = 'top';
-      c.lineWidth = Math.max(3 * px, fs * 0.22); c.strokeStyle = halo; c.lineJoin = 'round';
-      c.strokeText(m.label, cx, bottom + ext + 2 * px);
-      c.fillStyle = col; c.fillText(m.label, cx, bottom + ext + 2 * px);
-      c.textAlign = 'left';
+      if (fs >= 2.5 * px) {
+        c.font = '700 ' + fs.toFixed(1) + 'px ' + FONT;
+        c.textAlign = 'center'; c.textBaseline = 'top';
+        c.lineWidth = fs * 0.22; c.strokeStyle = halo; c.lineJoin = 'round';
+        c.strokeText(m.label, cx, bottom + ext);
+        c.fillStyle = col; c.fillText(m.label, cx, bottom + ext);
+        c.textAlign = 'left';
+      }
     }
   } else if (m.k === 'text') {
     const q = toScreen(m.x, m.y, view, W, H);
-    const fs = Math.max(m.h * s, 10 * px);
+    const fs = m.h * s;
+    if (fs < 2.5 * px) return;
     c.font = '700 ' + fs.toFixed(1) + 'px ' + FONT;
     c.textBaseline = 'top'; c.textAlign = 'left';
     m.t.split('\n').forEach((l, i) => {
-      c.lineWidth = Math.max(3 * px, fs * 0.22); c.strokeStyle = halo;
+      c.lineWidth = fs * 0.22; c.strokeStyle = halo;
       c.strokeText(l, q.x, q.y + i * fs * 1.3);
       c.fillStyle = col; c.fillText(l, q.x, q.y + i * fs * 1.3);
     });
