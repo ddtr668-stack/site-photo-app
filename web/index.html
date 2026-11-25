@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#14181B">
+<title>상규 도면뷰어</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<!-- 첫 화면 -->
+<main id="home">
+  <div class="home-in">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 48 48" aria-hidden="true"><rect x="2" y="2" width="44" height="44" rx="11" fill="#F0B400"/><path d="M12 34V14h12l12 12v8z" fill="none" stroke="#14181B" stroke-width="3" stroke-linejoin="round"/><path d="M24 14v12h12" fill="none" stroke="#14181B" stroke-width="3" stroke-linejoin="round"/><path d="M12 38h24" stroke="#14181B" stroke-width="3" stroke-linecap="round"/></svg>
+      <div>
+        <h1>상규 도면뷰어</h1>
+        <p class="sub">DWG · DXF 보기 · 거리/면적 재기 · PDF로 저장</p>
+      </div>
+    </div>
+    <button id="btnOpen" class="big">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+      도면 파일 열기
+    </button>
+    <section>
+      <h2>최근 도면</h2>
+      <ul id="recent" class="recent"></ul>
+      <p id="recentEmpty" class="empty">아직 연 도면이 없어요.</p>
+    </section>
+    <div class="tip">
+      <b>카톡으로 받은 도면</b>은 파일을 누른 뒤 <b>다른 앱으로 열기 → 상규 도면뷰어</b>를 고르면 바로 열려요. 파일 관리자에서 DWG 파일을 눌러도 돼요.
+    </div>
+  </div>
+</main>
+
+<!-- 도면 화면 -->
+<section id="viewer" hidden>
+  <canvas id="cv"></canvas>
+  <header class="topbar">
+    <button id="btnHome" class="ico" aria-label="처음 화면"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <div class="title"><div id="fname" class="fname"></div><div id="finfo" class="finfo"></div></div>
+    <button id="btnBg" class="ico" aria-label="배경색 바꾸기"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button>
+    <button id="btnFit" class="ico" aria-label="전체 보기"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </header>
+
+  <div id="mpanel" class="mpanel" hidden>
+    <div class="mrow">
+      <div class="mval"><div id="mlabel" class="mlabel">거리</div><div id="mmain" class="mmain">점을 찍어 주세요</div><div id="msub" class="msub"></div></div>
+      <select id="unit" aria-label="도면 단위">
+        <option value="mm">mm</option><option value="cm">cm</option><option value="m">m</option><option value="in">inch</option><option value="ft">feet</option>
+      </select>
+    </div>
+    <div class="mbtns">
+      <button id="mUndo">점 취소</button>
+      <button id="mDone">완료</button>
+      <button id="mClear">모두 지우기</button>
+      <button id="mSnap" class="toggle on" aria-pressed="true">스냅</button>
+    </div>
+  </div>
+
+  <nav class="tools">
+    <button data-mode="pan" class="on"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span>보기</span></button>
+    <button data-mode="dist"><svg viewBox="0 0 24 24"><path d="M3 17L17 3l4 4L7 21z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg><span>거리</span></button>
+    <button data-mode="area"><svg viewBox="0 0 24 24"><path d="M4 6l9-2 7 7-4 9-12-3z" fill="currentColor" fill-opacity=".25" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg><span>면적</span></button>
+    <button id="btnExport"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 17v3h16v-3" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span>내보내기</span></button>
+  </nav>
+  <canvas id="loupe" hidden></canvas>
+</section>
+
+<!-- 내보내기 -->
+<div id="sheetBack" class="sheetback" hidden></div>
+<div id="sheet" class="sheet" hidden>
+  <div class="grab"></div>
+  <h3>내보내기</h3>
+  <div class="opt"><span>형식</span><div class="seg" data-k="fmt"><button data-v="pdf" class="on">PDF</button><button data-v="png">사진(PNG)</button></div></div>
+  <div class="opt"><span>범위</span><div class="seg" data-k="range"><button data-v="view" class="on">지금 화면</button><button data-v="all">도면 전체</button></div></div>
+  <div class="opt" id="optPaper"><span>용지</span><div class="seg" data-k="paper"><button data-v="a4" class="on">A4</button><button data-v="a3">A3</button></div></div>
+  <div class="opt"><span>배경</span><div class="seg" data-k="bg"><button data-v="white" class="on">흰색(인쇄용)</button><button data-v="screen">화면과 같게</button></div></div>
+  <div class="opt"><span>측정 표시</span><div class="seg" data-k="meas"><button data-v="1" class="on">넣기</button><button data-v="0">빼기</button></div></div>
+  <div class="actions">
+    <button id="exSave" class="big">저장</button>
+    <button id="exShare" class="big alt">공유(카톡 등)</button>
+  </div>
+</div>
+
+<div id="busy" class="busy" hidden><div class="spin"></div><div id="busyText">도면 여는 중…</div></div>
+<div id="toast" class="toast" hidden></div>
+<input type="file" id="file" accept=".dwg,.dxf,.DWG,.DXF" hidden>
+
+<script src="vendor/jspdf.umd.min.js" defer></script>
+<script src="app.js"></script>
+</body>
+</html>

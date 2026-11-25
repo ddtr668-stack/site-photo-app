@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="상규 도면뷰어"
+        android:largeHeap="true"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|uiMode"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- 카톡 · 파일관리자 등에서 "다른 앱으로 열기" (DWG/DXF 종류로 알려준 경우) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="image/vnd.dwg" />
+                <data android:mimeType="image/x-dwg" />
+                <data android:mimeType="application/acad" />
+                <data android:mimeType="application/x-acad" />
+                <data android:mimeType="application/autocad_dwg" />
+                <data android:mimeType="application/dwg" />
+                <data android:mimeType="application/x-dwg" />
+                <data android:mimeType="application/x-autocad" />
+                <data android:mimeType="drawing/dwg" />
+                <data android:mimeType="image/vnd.dxf" />
+                <data android:mimeType="image/x-dxf" />
+                <data android:mimeType="application/dxf" />
+                <data android:mimeType="application/x-dxf" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+
+            <!-- 종류를 모를 때: 파일 이름이 .dwg / .dxf 로 끝나면 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:host="*" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.dwg" />
+                <data android:pathPattern=".*\\.DWG" />
+                <data android:pathPattern=".*\\.dxf" />
+                <data android:pathPattern=".*\\.DXF" />
+                <data android:pathPattern=".*\\..*\\.dwg" />
+                <data android:pathPattern=".*\\..*\\.DWG" />
+                <data android:pathPattern=".*\\..*\\.dxf" />
+                <data android:pathPattern=".*\\..*\\.DXF" />
+            </intent-filter>
+
+            <!-- 공유하기로 받은 파일 -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/vnd.dwg" />
+                <data android:mimeType="image/x-dwg" />
+                <data android:mimeType="application/acad" />
+                <data android:mimeType="application/x-acad" />
+                <data android:mimeType="application/autocad_dwg" />
+                <data android:mimeType="application/dwg" />
+                <data android:mimeType="application/x-dwg" />
+                <data android:mimeType="application/x-autocad" />
+                <data android:mimeType="drawing/dwg" />
+                <data android:mimeType="image/vnd.dxf" />
+                <data android:mimeType="image/x-dxf" />
+                <data android:mimeType="application/dxf" />
+                <data android:mimeType="application/x-dxf" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+        </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+</manifest>
