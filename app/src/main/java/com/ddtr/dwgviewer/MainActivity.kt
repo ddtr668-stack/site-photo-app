@@ -112,7 +112,7 @@ class MainActivity : Activity() {
     @Suppress("DEPRECATION")
     private fun handleIntent(i: Intent?) {
         if (i == null) return
-        val uri: Uri? = when (i.action) {
+        val uri: Uri = when (i.action) {
             Intent.ACTION_VIEW -> i.data
             Intent.ACTION_SEND -> {
                 if (Build.VERSION.SDK_INT >= 33) i.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
