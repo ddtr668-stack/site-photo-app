@@ -59,10 +59,33 @@
     </div>
   </div>
 
+  <div id="kpanel" class="mpanel kpanel" hidden>
+    <div class="krow">
+      <div class="seg ktools" data-k="tool">
+        <button data-v="pen" class="on">펜</button><button data-v="cloud">구름</button><button data-v="text">글자</button><button data-v="erase">지우개</button>
+      </div>
+    </div>
+    <div class="krow">
+      <div class="colors">
+        <button data-c="#E03131" class="on" style="--c:#E03131" aria-label="빨강"></button>
+        <button data-c="#1C7ED6" style="--c:#1C7ED6" aria-label="파랑"></button>
+        <button data-c="#2F9E44" style="--c:#2F9E44" aria-label="초록"></button>
+        <button data-c="fg" style="--c:#F2F4F5" aria-label="검정/흰색"></button>
+      </div>
+      <div class="seg kwidth" data-k="width"><button data-v="2.5" class="on">가늘게</button><button data-v="5">굵게</button></div>
+    </div>
+    <div class="mbtns">
+      <button id="kUndo">되돌리기</button>
+      <button id="kClear">모두 지우기</button>
+    </div>
+    <div id="khint" class="msub khint"></div>
+  </div>
+
   <nav class="tools">
     <button data-mode="pan" class="on"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span>보기</span></button>
     <button data-mode="dist"><svg viewBox="0 0 24 24"><path d="M3 17L17 3l4 4L7 21z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg><span>거리</span></button>
     <button data-mode="area"><svg viewBox="0 0 24 24"><path d="M4 6l9-2 7 7-4 9-12-3z" fill="currentColor" fill-opacity=".25" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg><span>면적</span></button>
+    <button data-mode="mark"><svg viewBox="0 0 24 24"><path d="M4 20l1.2-4.6L16.5 4.1a2 2 0 0 1 2.8 0l.6.6a2 2 0 0 1 0 2.8L8.6 18.8z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><path d="M14 6.6l3.4 3.4" stroke="currentColor" stroke-width="1.9"/></svg><span>메모</span></button>
     <button id="btnExport"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 17v3h16v-3" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span>내보내기</span></button>
   </nav>
   <canvas id="loupe" hidden></canvas>
@@ -77,10 +100,23 @@
   <div class="opt"><span>범위</span><div class="seg" data-k="range"><button data-v="view" class="on">지금 화면</button><button data-v="all">도면 전체</button></div></div>
   <div class="opt" id="optPaper"><span>용지</span><div class="seg" data-k="paper"><button data-v="a4" class="on">A4</button><button data-v="a3">A3</button></div></div>
   <div class="opt"><span>배경</span><div class="seg" data-k="bg"><button data-v="white" class="on">흰색(인쇄용)</button><button data-v="screen">화면과 같게</button></div></div>
-  <div class="opt"><span>측정 표시</span><div class="seg" data-k="meas"><button data-v="1" class="on">넣기</button><button data-v="0">빼기</button></div></div>
+  <div class="opt"><span>측정·메모</span><div class="seg" data-k="meas"><button data-v="1" class="on">넣기</button><button data-v="0">빼기</button></div></div>
   <div class="actions">
     <button id="exSave" class="big">저장</button>
     <button id="exShare" class="big alt">공유(카톡 등)</button>
+  </div>
+</div>
+
+ <!-- 글자 메모 입력 -->
+<div id="noteBack" class="sheetback" hidden></div>
+<div id="note" class="sheet" hidden>
+  <div class="grab"></div>
+  <h3 id="noteTitle">글자 메모</h3>
+  <textarea id="noteText" rows="3" placeholder="예) 이 벽 300 → 250으로 변경"></textarea>
+  <div class="actions three">
+    <button id="noteDel" class="big alt">삭제</button>
+    <button id="noteCancel" class="big alt">취소</button>
+    <button id="noteOk" class="big">넣기</button>
   </div>
 </div>
 

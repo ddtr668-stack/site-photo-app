@@ -17,7 +17,10 @@ const state = {
   mode: 'pan',
   meas: { pts: [], done: [], cursor: null, snap: true },
   unit: 'mm',
+  marks: [], history: [], fileId: null,
+  mk: { tool: 'pen', color: '#E03131', width: 2.5 },
 };
+const isMeasure = () => state.mode === 'dist' || state.mode === 'area';
 
 // ---------------- 공통 ----------------
 let toastTimer = 0;
@@ -47,11 +50,12 @@ const DB = {
   open() {
     if (this.db) return Promise.resolve(this.db);
     return new Promise((res, rej) => {
-      const r = indexedDB.open('sanggyu-dwg', 1);
+      const r = indexedDB.open('sanggyu-dwg', 2);
       r.onupgradeneeded = () => {
         const d = r.result;
-        d.createObjectStore('meta', { keyPath: 'id' });
-        d.createObjectStore('data');
+        if (!d.objectStoreNames.contains('meta')) d.createObjectStore('meta', { keyPath: 'id' });
+        if (!d.objectStoreNames.contains('data')) d.createObjectStore('data');
+        if (!d.objectStoreNames.contains('notes')) d.createObjectStore('notes');
       };
       r.onsuccess = () => { this.db = r.result; res(this.db); };
       r.onerror = () => rej(r.error);
@@ -92,9 +96,20 @@ const DB = {
     await this.tx(['meta', 'data'], 'readwrite', (t) => {
       t.objectStore('meta').put({ id, name, size: buf.byteLength, time: Date.now() });
       t.objectStore('data').put(buf, id);
-      for (const o of old) { t.objectStore('meta').delete(o.id); t.objectStore('data').delete(o.id); }
+      for (const o of old) { t.objectStore('meta').delete(o.id); t.objectStore('data').delete(o.id); t.objectStore('notes').delete(o.id); }
     });
     return id;
+  },
+  async getNotes(id) {
+    const d = await this.open();
+    return new Promise((res) => {
+      const r = d.transaction('notes').objectStore('notes').get(id);
+      r.onsuccess = () => res(r.result || null);
+      r.onerror = () => res(null);
+    });
+  },
+  async putNotes(id, v) {
+    await this.tx(['notes'], 'readwrite', (t) => t.objectStore('notes').put(v, id));
   },
   async touch(id) {
     const all = await this.list();
@@ -104,7 +119,7 @@ const DB = {
     await this.tx(['meta'], 'readwrite', (t) => t.objectStore('meta').put(m));
   },
   async del(id) {
-    await this.tx(['meta', 'data'], 'readwrite', (t) => { t.objectStore('meta').delete(id); t.objectStore('data').delete(id); });
+    await this.tx(['meta', 'data', 'notes'], 'readwrite', (t) => { t.objectStore('meta').delete(id); t.objectStore('data').delete(id); t.objectStore('notes').delete(id); });
   },
 };
 
@@ -130,7 +145,7 @@ async function showRecent() {
       const buf = await DB.get(m.id);
       if (!buf) { toast('파일을 찾을 수 없어요.'); return; }
       DB.touch(m.id).catch(() => {});
-      openBytes(buf, m.name, true);
+      openBytes(buf, m.name, m.id);
     });
     ul.appendChild(li);
   }
@@ -165,11 +180,12 @@ function parse(buf) {
   });
 }
 
-async function openBytes(buf, name, fromRecent = false) {
+async function openBytes(buf, name, recentId = null) {
   busy(true, '도면 여는 중…');
   const size = buf.byteLength;
   try {
-    if (!fromRecent) { try { await DB.save(name, buf.slice(0)); } catch (e) {} }
+    let fileId = recentId;
+    if (!fileId) { try { fileId = await DB.save(name, buf.slice(0)); } catch (e) {} }
     const t0 = performance.now();
     const model = await parse(buf);
     busy(true, '화면 준비 중…');
@@ -178,6 +194,13 @@ async function openBytes(buf, name, fromRecent = false) {
     state.scene = scene;
     state.file = { name, size };
     state.meas.pts = []; state.meas.done = []; state.meas.cursor = null;
+    state.marks = []; state.history = []; state.fileId = fileId || null;
+    if (fileId) {
+      try {
+        const n = await DB.getNotes(fileId);
+        if (n) { state.marks = n.marks || []; state.meas.done = n.meas || []; }
+      } catch (e) {}
+    }
     const u = { 1: 'in', 2: 'ft', 4: 'mm', 5: 'cm', 6: 'm' }[model.units];
     state.unit = u || 'mm';
     $('#unit').value = state.unit;
@@ -696,10 +719,16 @@ cv.addEventListener('pointerdown', (ev) => {
     const [a, b] = [...ptrs.values()];
     gest = { type: 'pinch', d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, c0: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, v0: { ...state.view } };
     state.meas.cursor = null; hideLoupe();
+    if (state.draft) { state.draft = null; }
     return;
   }
   if (ptrs.size > 2) return;
-  const measuring = state.mode !== 'pan';
+  if (state.mode === 'mark' && (ev.pointerType !== 'mouse' || ev.button === 0)) {
+    gest = { type: 'mark', start: p, t: performance.now() };
+    markDown(p);
+    return;
+  }
+  const measuring = isMeasure();
   if (measuring && ev.pointerType !== 'mouse') {
     gest = { type: 'aim', start: p, t: performance.now() };
     updateAim(p.x, p.y);
@@ -712,7 +741,7 @@ cv.addEventListener('pointermove', (ev) => {
   const p = cssPt(ev);
   if (!ptrs.has(ev.pointerId)) {
     // 마우스 오버: 측정 중이면 스냅 미리보기
-    if (ev.pointerType === 'mouse' && state.mode !== 'pan') { updateAim(p.x, p.y, true); }
+    if (ev.pointerType === 'mouse' && isMeasure()) { updateAim(p.x, p.y, true); }
     return;
   }
   ptrs.get(ev.pointerId).x = p.x; ptrs.get(ev.pointerId).y = p.y;
@@ -739,6 +768,8 @@ cv.addEventListener('pointermove', (ev) => {
     requestDraw();
   } else if (gest.type === 'aim') {
     updateAim(p.x, p.y);
+  } else if (gest.type === 'mark') {
+    markMove(p);
   }
 });
 function endPtr(ev) {
@@ -748,12 +779,14 @@ function endPtr(ev) {
   if (gest && gest.type === 'pinch') {
     if (ptrs.size === 1) {
       const [q] = [...ptrs.values()];
-      gest = state.mode === 'pan' || q.type === 'mouse' ? { type: 'pan', start: q, last: q, moved: 99, t: 0 } : null;
+      gest = (state.mode === 'pan' || q.type === 'mouse') && state.mode !== 'mark' ? { type: 'pan', start: q, last: q, moved: 99, t: 0 } : null;
     } else if (!ptrs.size) gest = null;
     interactEnd();
     return;
   }
-  if (gest && gest.type === 'aim' && ev.type === 'pointerup') {
+  if (gest && gest.type === 'mark') {
+    if (ev.type === 'pointerup') markUp(p); else state.draft = null;
+  } else if (gest && gest.type === 'aim' && ev.type === 'pointerup') {
     const c = state.meas.cursor;
     if (c) addMeasurePoint(c.x, c.y);
     state.meas.cursor = null;
@@ -776,7 +809,7 @@ function endPtr(ev) {
 cv.addEventListener('pointerup', endPtr);
 cv.addEventListener('pointercancel', endPtr);
 cv.addEventListener('pointerleave', (ev) => {
-  if (ev.pointerType === 'mouse' && !ptrs.size && state.mode !== 'pan') { state.meas.cursor = null; requestDraw(); }
+  if (ev.pointerType === 'mouse' && !ptrs.size && isMeasure()) { state.meas.cursor = null; requestDraw(); }
 });
 cv.addEventListener('wheel', (ev) => {
   if (!state.scene) return;
@@ -785,7 +818,7 @@ cv.addEventListener('wheel', (ev) => {
   const k = Math.exp(-ev.deltaY * (ev.deltaMode === 1 ? 0.05 : 0.0018));
   zoomAt(p.x, p.y, k);
   interactStart(); interactEnd();
-  if (state.mode !== 'pan') updateAim(p.x, p.y, true);
+  if (isMeasure()) updateAim(p.x, p.y, true);
   requestDraw();
 }, { passive: false });
 cv.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -869,7 +902,10 @@ function setMode(m) {
   if (state.mode !== m && state.meas.pts.length) finishMeasure();
   state.mode = m;
   document.querySelectorAll('.tools [data-mode]').forEach((b) => b.classList.toggle('on', b.dataset.mode === m));
-  $('#mpanel').hidden = m === 'pan';
+  $('#mpanel').hidden = !isMeasure();
+  $('#kpanel').hidden = m !== 'mark';
+  if (m === 'mark') markHint();
+  state.draft = null;
   state.meas.cursor = null; hideLoupe();
   updatePanel();
   requestDraw();
@@ -886,6 +922,7 @@ function addMeasurePoint(x, y) {
   requestDraw();
 }
 function finishMeasure() {
+  setTimeout(saveNotes, 0);
   const pts = state.meas.pts;
   const type = state.mode === 'area' ? 'area' : 'dist';
   if ((type === 'dist' && pts.length >= 2) || (type === 'area' && pts.length >= 3)) state.meas.done.push({ type, pts: pts.slice() });
@@ -899,7 +936,10 @@ $('#mUndo').addEventListener('click', () => {
   updatePanel(); requestDraw();
 });
 $('#mDone').addEventListener('click', finishMeasure);
-$('#mClear').addEventListener('click', () => { state.meas.pts = []; state.meas.done = []; updatePanel(); requestDraw(); });
+$('#mClear').addEventListener('click', () => {
+  if (state.meas.done.length && !confirm('측정한 것을 모두 지울까요?')) return;
+  state.meas.pts = []; state.meas.done = []; updatePanel(); requestDraw(); saveNotes();
+});
 $('#mSnap').addEventListener('click', (e) => {
   state.meas.snap = !state.meas.snap;
   e.currentTarget.classList.toggle('on', state.meas.snap);
@@ -933,7 +973,7 @@ function fmtArea(a) {
   return { main: fmtNum(m2, m2 < 100 ? 2 : 1) + ' ㎡', py: fmtNum(m2 / 3.305785, 2) + '평' };
 }
 function updatePanel() {
-  if (state.mode === 'pan') return;
+  if (!isMeasure()) return;
   const pts = state.meas.pts;
   $('#mlabel').textContent = state.mode === 'area' ? '면적 재기' : '거리 재기';
   let main, sub = '';
@@ -961,9 +1001,10 @@ function updatePanel() {
 
 // 측정 그리기 (화면·내보내기 공통)
 function drawOverlay(c, W, H, view, o) {
-  const items = state.meas.done.map((d) => ({ ...d, live: false }));
+  if (o.marks !== false) drawMarks(c, W, H, view, o);
+  const items = (o.marks === false && !o.live ? [] : state.meas.done).map((d) => ({ ...d, live: false }));
   const cur = state.meas.pts.slice();
-  if (o.live && state.mode !== 'pan' && state.meas.cursor && cur.length) cur.push(state.meas.cursor);
+  if (o.live && isMeasure() && state.meas.cursor && cur.length) cur.push(state.meas.cursor);
   if (cur.length) items.push({ type: state.mode === 'area' ? 'area' : 'dist', pts: cur, live: true });
   const col = o.bg === 'white' ? '#D9480F' : '#FFC21A';
   const halo = o.bg === 'white' ? 'rgba(255,255,255,.92)' : 'rgba(10,12,14,.85)';
@@ -1022,7 +1063,7 @@ function drawOverlay(c, W, H, view, o) {
   }
   // 커서와 스냅 표시
   const cr = state.meas.cursor;
-  if (o.live && state.mode !== 'pan' && cr) {
+  if (o.live && isMeasure() && cr) {
     const p = toScreen(cr.x, cr.y, view, W, H);
     const r = 7 * px;
     c.lineWidth = 2 * px;
@@ -1046,6 +1087,257 @@ function label(c, text, x, y, col, halo, px) {
   c.fillStyle = col; c.fillText(text, x, y);
 }
 
+// ---------------- 메모 (펜 · 구름 · 글자 · 지우개) ----------------
+// 메모는 도면 좌표로 저장해서 확대/이동해도 그 자리에 붙어 있다.
+function markColor(c, bg) { return c === 'fg' ? (bg === 'white' ? '#111111' : '#F2F4F5') : c; }
+function wpt(p) { return toWorld(p.x, p.y); }
+
+function markDown(p) {
+  const mk = state.mk, w = wpt(p), s = state.view.s;
+  state.eraseGroup = null;
+  if (mk.tool === 'pen') state.draft = { k: 'pen', c: mk.color, w: mk.width * DPR / s, p: [w.x, w.y] };
+  else if (mk.tool === 'cloud') state.draft = { k: 'cloud', c: mk.color, w: mk.width * DPR / s, b: [w.x, w.y, w.x, w.y], r: 11 * DPR / s };
+  else if (mk.tool === 'erase') { state.eraseGroup = []; eraseAt(w); }
+  requestDraw();
+}
+function markMove(p) {
+  const d = state.draft, w = wpt(p);
+  if (state.mk.tool === 'erase') { eraseAt(w); return; }
+  if (!d) return;
+  if (d.k === 'pen') {
+    const lx = d.p[d.p.length - 2], ly = d.p[d.p.length - 1];
+    if (Math.hypot(w.x - lx, w.y - ly) * state.view.s < 1.5 * DPR) return;
+    d.p.push(w.x, w.y);
+  } else if (d.k === 'cloud') { d.b[2] = w.x; d.b[3] = w.y; }
+  requestDraw();
+}
+function markUp(p) {
+  const d = state.draft, w = wpt(p);
+  state.draft = null;
+  const tool = state.mk.tool;
+  if (tool === 'erase') {
+    if (state.eraseGroup && state.eraseGroup.length) { state.history.push({ t: 'del', items: state.eraseGroup }); saveNotes(); }
+    state.eraseGroup = null;
+    requestDraw();
+    return;
+  }
+  if (tool === 'text') {
+    const moved = gest && Math.hypot(p.x - gest.start.x, p.y - gest.start.y);
+    if (moved > 12) return;
+    const hit = hitMark(w, (m) => m.k === 'text');
+    openNote(hit ? { mark: hit } : { x: w.x, y: w.y });
+    return;
+  }
+  if (!d) return;
+  if (d.k === 'pen') {
+    if (d.p.length === 2) d.p.push(d.p[0] + 0.01 / state.view.s, d.p[1]); // 점 하나
+    addMark(d);
+  } else if (d.k === 'cloud') {
+    const b = d.b;
+    b[2] = w.x; b[3] = w.y;
+    if (Math.abs(b[2] - b[0]) * state.view.s < 10 * DPR || Math.abs(b[3] - b[1]) * state.view.s < 10 * DPR) { requestDraw(); return; }
+    d.b = [Math.min(b[0], b[2]), Math.min(b[1], b[3]), Math.max(b[0], b[2]), Math.max(b[1], b[3])];
+    addMark(d);
+  }
+}
+function addMark(m) {
+  state.marks.push(m);
+  state.history.push({ t: 'add', m });
+  saveNotes();
+  requestDraw();
+}
+
+function markBox(m) {
+  if (m.k === 'pen') {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i < m.p.length; i += 2) { x0 = Math.min(x0, m.p[i]); x1 = Math.max(x1, m.p[i]); y0 = Math.min(y0, m.p[i + 1]); y1 = Math.max(y1, m.p[i + 1]); }
+    return [x0 - m.w, y0 - m.w, x1 + m.w, y1 + m.w];
+  }
+  if (m.k === 'cloud') return [m.b[0] - m.r, m.b[1] - m.r, m.b[2] + m.r, m.b[3] + m.r];
+  const lines = m.t.split('\n');
+  const len = lines.reduce((a, l) => Math.max(a, [...l].reduce((w, ch) => w + (ch.charCodeAt(0) > 0x2e80 ? 1 : 0.6), 0)), 0);
+  return [m.x - m.h * 0.3, m.y - lines.length * 1.3 * m.h - m.h * 0.3, m.x + len * m.h + m.h * 0.3, m.y + m.h * 0.3];
+}
+function segDist(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+  let t = L ? ((px - ax) * dx + (py - ay) * dy) / L : 0;
+  t = t < 0 ? 0 : t > 1 ? 1 : t;
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+function markDist(m, w) {
+  if (m.k === 'pen') {
+    let d = Infinity;
+    for (let i = 2; i < m.p.length; i += 2) d = Math.min(d, segDist(w.x, w.y, m.p[i - 2], m.p[i - 1], m.p[i], m.p[i + 1]));
+    return d - m.w / 2;
+  }
+  if (m.k === 'cloud') {
+    const [x0, y0, x1, y1] = m.b;
+    return Math.min(segDist(w.x, w.y, x0, y0, x1, y0), segDist(w.x, w.y, x1, y0, x1, y1), segDist(w.x, w.y, x1, y1, x0, y1), segDist(w.x, w.y, x0, y1, x0, y0)) - m.r;
+  }
+  const b = markBox(m);
+  return w.x >= b[0] && w.x <= b[2] && w.y >= b[1] && w.y <= b[3] ? 0 : Infinity;
+}
+function hitMark(w, filter) {
+  const tol = 16 * DPR / state.view.s;
+  let best = null, bd = tol;
+  for (const m of state.marks) {
+    if (filter && !filter(m)) continue;
+    const d = markDist(m, w);
+    if (d <= bd) { bd = d; best = m; }
+  }
+  return best;
+}
+function eraseAt(w) {
+  const m = hitMark(w);
+  if (!m) return;
+  const i = state.marks.indexOf(m);
+  state.marks.splice(i, 1);
+  if (state.eraseGroup) state.eraseGroup.push([i, m]);
+  requestDraw();
+}
+
+$('#kUndo').addEventListener('click', () => {
+  const h = state.history.pop();
+  if (!h) { toast('되돌릴 메모가 없어요.'); return; }
+  if (h.t === 'add') { const i = state.marks.indexOf(h.m); if (i >= 0) state.marks.splice(i, 1); }
+  else if (h.t === 'del') { for (const [i, m] of h.items.slice().reverse()) state.marks.splice(i, 0, m); }
+  else if (h.t === 'clear') state.marks = h.marks;
+  else if (h.t === 'edit') { h.m.t = h.old.t; h.m.c = h.old.c; }
+  saveNotes(); requestDraw();
+});
+$('#kClear').addEventListener('click', () => {
+  if (!state.marks.length) return;
+  if (!confirm('메모를 모두 지울까요? (되돌리기로 살릴 수 있어요)')) return;
+  state.history.push({ t: 'clear', marks: state.marks });
+  state.marks = [];
+  saveNotes(); requestDraw();
+});
+document.querySelectorAll('#kpanel .seg').forEach((seg) => {
+  seg.addEventListener('click', (ev) => {
+    const b = ev.target.closest('button');
+    if (!b) return;
+    seg.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+    if (seg.dataset.k === 'tool') { state.mk.tool = b.dataset.v; markHint(); }
+    else state.mk.width = parseFloat(b.dataset.v);
+  });
+});
+document.querySelectorAll('#kpanel .colors button').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('#kpanel .colors button').forEach((x) => x.classList.toggle('on', x === b));
+  state.mk.color = b.dataset.c;
+  if (state.mk.tool === 'erase') { state.mk.tool = 'pen'; document.querySelectorAll('#kpanel .ktools button').forEach((x) => x.classList.toggle('on', x.dataset.v === 'pen')); markHint(); }
+}));
+function markHint() {
+  $('#khint').textContent = {
+    pen: '한 손가락으로 그리기 · 두 손가락으로 옮기기/확대',
+    cloud: '끌어서 수정 구름 표시를 그려요',
+    text: '글자를 넣을 곳을 누르세요 · 써 둔 글자를 누르면 고쳐요',
+    erase: '지울 메모를 문지르세요',
+  }[state.mk.tool];
+}
+
+// 글자 메모 입력창
+let noteCtx = null;
+function openNote(o) {
+  noteCtx = o;
+  $('#noteTitle').textContent = o.mark ? '글자 메모 고치기' : '글자 메모';
+  $('#noteText').value = o.mark ? o.mark.t : '';
+  $('#noteDel').hidden = !o.mark;
+  $('#note .actions').classList.toggle('three', !!o.mark);
+  $('#note').hidden = false; $('#noteBack').hidden = false;
+  setTimeout(() => $('#noteText').focus(), 50);
+}
+function closeNote() { $('#note').hidden = true; $('#noteBack').hidden = true; noteCtx = null; $('#noteText').blur(); }
+$('#noteBack').addEventListener('click', closeNote);
+$('#noteCancel').addEventListener('click', closeNote);
+$('#noteOk').addEventListener('click', () => {
+  const t = $('#noteText').value.replace(/\s+$/, '');
+  const o = noteCtx;
+  closeNote();
+  if (!o) return;
+  if (o.mark) {
+    if (!t) { delMark(o.mark); return; }
+    state.history.push({ t: 'edit', m: o.mark, old: { t: o.mark.t, c: o.mark.c } });
+    o.mark.t = t; o.mark.c = state.mk.color;
+    saveNotes(); requestDraw();
+  } else if (t) {
+    addMark({ k: 'text', c: state.mk.color, h: 16 * DPR / state.view.s, x: o.x, y: o.y, t });
+  }
+});
+$('#noteDel').addEventListener('click', () => { const o = noteCtx; closeNote(); if (o && o.mark) delMark(o.mark); });
+function delMark(m) {
+  const i = state.marks.indexOf(m);
+  if (i < 0) return;
+  state.marks.splice(i, 1);
+  state.history.push({ t: 'del', items: [[i, m]] });
+  saveNotes(); requestDraw();
+}
+
+let saveTimer = 0;
+function saveNotes() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    if (!state.fileId) return;
+    DB.putNotes(state.fileId, { marks: state.marks, meas: state.meas.done }).catch(() => {});
+  }, 400);
+}
+
+function drawMarks(c, W, H, view, o) {
+  const list = state.draft && o.live ? state.marks.concat([state.draft]) : state.marks;
+  if (!list.length) return;
+  const px = o.px, s = view.s;
+  const halo = o.bg === 'white' ? 'rgba(255,255,255,.9)' : 'rgba(10,12,14,.85)';
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.setLineDash([]);
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  const vx0 = view.cx - W / 2 / s, vx1 = view.cx + W / 2 / s, vy0 = view.cy - H / 2 / s, vy1 = view.cy + H / 2 / s;
+  for (const m of list) {
+    const b = markBox(m);
+    if (b[2] < vx0 || b[0] > vx1 || b[3] < vy0 || b[1] > vy1) continue;
+    const col = markColor(m.c, o.bg);
+    if (m.k === 'pen') {
+      c.beginPath();
+      for (let i = 0; i < m.p.length; i += 2) {
+        const q = toScreen(m.p[i], m.p[i + 1], view, W, H);
+        if (i) c.lineTo(q.x, q.y); else c.moveTo(q.x, q.y);
+      }
+      c.strokeStyle = col; c.lineWidth = Math.max(m.w * s, 1.3 * px);
+      c.stroke();
+    } else if (m.k === 'cloud') {
+      const a = toScreen(Math.min(m.b[0], m.b[2]), Math.max(m.b[1], m.b[3]), view, W, H); // 화면 왼쪽 위
+      const z = toScreen(Math.max(m.b[0], m.b[2]), Math.min(m.b[1], m.b[3]), view, W, H); // 화면 오른쪽 아래
+      const w = z.x - a.x, h = z.y - a.y;
+      if (w < 1 || h < 1) continue;
+      const r = Math.min(Math.max(m.r * s, 5 * px), Math.min(w, h) / 2);
+      const pts = [[a.x, a.y], [z.x, a.y], [z.x, z.y], [a.x, z.y]];
+      c.beginPath();
+      for (let e = 0; e < 4; e++) {
+        const [px0, py0] = pts[e], [px1, py1] = pts[(e + 1) % 4];
+        const L = Math.hypot(px1 - px0, py1 - py0), n = Math.max(1, Math.round(L / (2 * r)));
+        for (let k = 0; k < n; k++) {
+          const ax = px0 + (px1 - px0) * k / n, ay = py0 + (py1 - py0) * k / n;
+          const bx = px0 + (px1 - px0) * (k + 1) / n, by = py0 + (py1 - py0) * (k + 1) / n;
+          const mx = (ax + bx) / 2, my = (ay + by) / 2, rr = Math.hypot(bx - ax, by - ay) / 2;
+          c.arc(mx, my, rr, Math.atan2(ay - my, ax - mx), Math.atan2(by - my, bx - mx), false);
+        }
+      }
+      c.closePath();
+      c.strokeStyle = col; c.lineWidth = Math.max(m.w * s, 1.3 * px);
+      c.stroke();
+    } else if (m.k === 'text') {
+      const q = toScreen(m.x, m.y, view, W, H);
+      const fs = Math.max(m.h * s, 10 * px);
+      c.font = '700 ' + fs.toFixed(1) + 'px ' + FONT;
+      c.textBaseline = 'top'; c.textAlign = 'left';
+      const lines = m.t.split('\n');
+      lines.forEach((l, i) => {
+        c.lineWidth = Math.max(3 * px, fs * 0.22); c.strokeStyle = halo;
+        c.strokeText(l, q.x, q.y + i * fs * 1.3);
+        c.fillStyle = col; c.fillText(l, q.x, q.y + i * fs * 1.3);
+      });
+    }
+  }
+}
+
 // ---------------- 내보내기 ----------------
 const exOpt = { fmt: 'pdf', range: 'view', paper: 'a4', bg: 'white', meas: '1' };
 function openSheet() { $('#sheet').hidden = false; $('#sheetBack').hidden = false; }
@@ -1056,7 +1348,7 @@ $('#btnExport').addEventListener('click', () => {
   openSheet();
 });
 $('#sheetBack').addEventListener('click', closeSheet);
-document.querySelectorAll('.seg').forEach((seg) => {
+document.querySelectorAll('#sheet .seg').forEach((seg) => {
   seg.addEventListener('click', (ev) => {
     const b = ev.target.closest('button');
     if (!b) return;
@@ -1076,7 +1368,10 @@ async function makeExport() {
   if (exOpt.range === 'all') {
     const f = sc.fit, mw = (f[2] - f[0]) * 0.03, mh = (f[3] - f[1]) * 0.03;
     box = [f[0] - mw, f[1] - mh, f[2] + mw, f[3] + mh];
-    if (exOpt.meas === '1') for (const d of state.meas.done) for (const p of d.pts) { box[0] = Math.min(box[0], p.x); box[1] = Math.min(box[1], p.y); box[2] = Math.max(box[2], p.x); box[3] = Math.max(box[3], p.y); }
+    if (exOpt.meas === '1') {
+      for (const d of state.meas.done) for (const p of d.pts) { box[0] = Math.min(box[0], p.x); box[1] = Math.min(box[1], p.y); box[2] = Math.max(box[2], p.x); box[3] = Math.max(box[3], p.y); }
+      for (const m of state.marks) { const b = markBox(m); box[0] = Math.min(box[0], b[0]); box[1] = Math.min(box[1], b[1]); box[2] = Math.max(box[2], b[2]); box[3] = Math.max(box[3], b[3]); }
+    }
   } else {
     const v = state.view;
     box = [v.cx - CW / 2 / v.s, v.cy - CH / 2 / v.s, v.cx + CW / 2 / v.s, v.cy + CH / 2 / v.s];
@@ -1189,6 +1484,7 @@ async function sendToNative(f, action) {
 
 // ---------------- 뒤로 가기 (안드로이드) ----------------
 window.__onBack = () => {
+  if (!$('#note').hidden) { closeNote(); return true; }
   if (!$('#sheet').hidden) { closeSheet(); return true; }
   if (!$('#viewer').hidden) {
     if (state.mode !== 'pan') {
