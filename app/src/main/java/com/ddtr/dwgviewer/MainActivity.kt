@@ -12,7 +12,9 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.util.Base64
+import android.view.ViewGroup
 import android.webkit.JavascriptInterface
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -70,6 +72,17 @@ class MainActivity : Activity() {
                 val u = request.url
                 if (u.host == HOST) return false
                 try { startActivity(Intent(Intent.ACTION_VIEW, u)) } catch (e: Exception) { }
+                return true
+            }
+
+            // 아주 큰 도면을 열다가 메모리가 모자라 화면 엔진이 죽으면, 앱을 끄지 않고 화면만 다시 띄운다
+            // (다시 뜬 화면이 "지난번 도면을 열지 못했어요"를 알려준다)
+            override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                try {
+                    (view.parent as? ViewGroup)?.removeView(view)
+                    view.destroy()
+                } catch (e: Exception) { }
+                recreate()
                 return true
             }
 

@@ -9,7 +9,34 @@ const EM = 80; // 글자 높이 1(로컬) = 80px (100px 글꼴 크기의 대문�
 const store = {
   get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} },
 };
+
+// 앱 안 확인창 (안드로이드 기본 창 대신)
+function ask(title, msg, okText = '확인', noText = '취소') {
+  return new Promise((res) => {
+    $('#dlgT').textContent = title;
+    $('#dlgM').textContent = msg;
+    $('#dlgOk').textContent = okText;
+    $('#dlgNo').textContent = noText || '';
+    $('#dlgNo').hidden = !noText;
+    $('#dlg').hidden = false; $('#dlgBack').hidden = false;
+    const done = (v) => {
+      $('#dlg').hidden = true; $('#dlgBack').hidden = true;
+      $('#dlgOk').onclick = $('#dlgNo').onclick = $('#dlgBack').onclick = null;
+      res(v);
+    };
+    $('#dlgOk').onclick = () => done(true);
+    $('#dlgNo').onclick = () => done(false);
+    $('#dlgBack').onclick = () => done(false);
+  });
+}
+
+// 파일 크기 기준 (MB)
+const BIG_WARN_MB = 50;   // 이보다 크면 미리 알려주고 물어보기
+const BIG_MAX_MB = 300;   // 이보다 크면 열지 않기
+const RECENT_MAX_MB = 40; // 이보다 크면 최근 목록에 복사해 두지 않기 (메모리 절약)
+const PURGE_TIP = 'PC 캐드에서 PURGE(소거)를 여러 번, AUDIT(검사)를 한 뒤 다시 저장하면 크기가 크게 줄어요. 도면 안에 넣은 사진·엑셀(OLE)도 지우면 좋아요.';
 const state = {
   scene: null, file: null,
   view: { s: 1, cx: 0, cy: 0 },
@@ -182,11 +209,25 @@ function parse(buf) {
 }
 
 async function openBytes(buf, name, recentId = null) {
-  busy(true, '도면 여는 중…');
   const size = buf.byteLength;
+  const mb = size / 1048576;
+  const mbText = mb >= 10 ? Math.round(mb) + 'MB' : mb.toFixed(1) + 'MB';
+  busy(false);
+  if (mb > BIG_MAX_MB) {
+    await ask('파일이 너무 커요 (' + mbText + ')', '폰·탭에서는 열 수 없는 크기예요.\n\n' + PURGE_TIP, '확인', null);
+    showRecent();
+    return;
+  }
+  if (mb > BIG_WARN_MB) {
+    const go = await ask('파일이 커요 (' + mbText + ')', '폰에서는 보통 ' + BIG_WARN_MB + 'MB 정도까지 열려요. 이보다 크면 열다가 멈추거나 앱이 다시 시작될 수 있어요.\n\n' + PURGE_TIP, '그래도 열기', '취소');
+    if (!go) { showRecent(); return; }
+  }
+  busy(true, mb > 20 ? '도면 여는 중… (' + mbText + ', 시간이 좀 걸려요)' : '도면 여는 중…');
+  // 열다가 앱이 멈추면 다음에 켤 때 알려주기 위한 표시
+  store.set('opening', JSON.stringify({ name, mb: mbText }));
   try {
     let fileId = recentId;
-    if (!fileId) { try { fileId = await DB.save(name, buf.slice(0)); } catch (e) {} }
+    if (!fileId && mb <= RECENT_MAX_MB) { try { fileId = await DB.save(name, buf.slice(0)); } catch (e) {} }
     const t0 = performance.now();
     const model = await parse(buf);
     busy(true, '화면 준비 중…');
@@ -213,9 +254,13 @@ async function openBytes(buf, name, recentId = null) {
     fitView();
     console.log('open ms', Math.round(performance.now() - t0));
   } catch (e) {
-    toast(e.message || String(e), 4500);
+    const msg = e.message || String(e);
+    if (mb > 20 && /memory|메모리|문제가 생겼|Aborted|OOM|out of/i.test(msg)) {
+      await ask('도면을 열지 못했어요', '파일(' + mbText + ')이 커서 메모리가 모자랐어요.\n\n' + PURGE_TIP, '확인', null);
+    } else toast(msg, 4500);
     if (!state.scene) showViewer(false);
   } finally {
+    store.del('opening');
     busy(false);
     showRecent();
   }
@@ -991,8 +1036,11 @@ $('#mUndo').addEventListener('click', () => {
 });
 $('#mDone').addEventListener('click', finishMeasure);
 $('#mClear').addEventListener('click', () => {
-  if (state.meas.done.length && !confirm('측정한 것을 모두 지울까요?')) return;
-  state.meas.pts = []; state.meas.done = []; updatePanel(); requestDraw(); saveNotes();
+  if (!state.meas.done.length) { state.meas.pts = []; updatePanel(); requestDraw(); return; }
+  ask('측정한 것을 모두 지울까요?', '지운 뒤에는 되돌릴 수 없어요.', '모두 지우기', '취소').then((ok) => {
+    if (!ok) return;
+    state.meas.pts = []; state.meas.done = []; updatePanel(); requestDraw(); saveNotes();
+  });
 });
 $('#mSnap').addEventListener('click', (e) => {
   state.meas.snap = !state.meas.snap;
@@ -1791,10 +1839,12 @@ $('#kUndo').addEventListener('click', () => {
 });
 $('#kClear').addEventListener('click', () => {
   if (!state.marks.length) return;
-  if (!confirm('메모와 블럭을 모두 지울까요? (되돌리기로 살릴 수 있어요)')) return;
-  state.history.push({ t: 'clear', marks: state.marks });
-  state.marks = []; state.sel = null;
-  saveNotes(); requestDraw();
+  ask('메모와 블럭을 모두 지울까요?', '되돌리기로 다시 살릴 수 있어요.', '모두 지우기', '취소').then((ok) => {
+    if (!ok) return;
+    state.history.push({ t: 'clear', marks: state.marks });
+    state.marks = []; state.sel = null;
+    saveNotes(); requestDraw();
+  });
 });
 function applyToolUI() {
   const t = state.mk.tool;
@@ -2264,6 +2314,7 @@ async function sendToNative(f, action) {
 
 // ---------------- 뒤로 가기 (안드로이드) ----------------
 window.__onBack = () => {
+  if (!$('#dlg').hidden) { $('#dlgNo').hidden ? $('#dlgOk').click() : $('#dlgNo').click(); return true; }
   if (!$('#note').hidden) { closeNote(); return true; }
   if (!$('#sheet').hidden) { closeSheet(); return true; }
   if (!$('#viewer').hidden) {
@@ -2279,6 +2330,15 @@ window.__onBack = () => {
 
 // ---------------- 시작 ----------------
 showRecent();
+// 지난번에 도면을 열다가 앱이 멈췄으면 이유를 알려준다
+(() => {
+  const op = store.get('opening');
+  if (!op) return;
+  store.del('opening');
+  let o = {};
+  try { o = JSON.parse(op); } catch (e) {}
+  ask('지난번 도면을 열지 못했어요', '「' + (o.name || '도면') + '」(' + (o.mb || '') + ')을 여는 중에 메모리가 모자라 앱이 다시 시작됐어요.\n\n' + PURGE_TIP, '확인', null);
+})();
 if (NATIVE && NATIVE.pending) {
   try {
     const p = NATIVE.pending();
