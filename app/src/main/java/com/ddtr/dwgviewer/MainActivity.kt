@@ -22,6 +22,9 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.core.content.FileProvider
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.webkit.WebViewAssetLoader
 import org.json.JSONObject
 import java.io.File
@@ -243,6 +246,18 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun isApp(): Boolean = true
+
+        /** 도면만 보기: 상태바·내비게이션 바까지 숨김 (가장자리에서 밀면 잠깐 나옴) */
+        @JavascriptInterface
+        fun fullscreen(on: Boolean) {
+            runOnUiThread {
+                val c = WindowCompat.getInsetsController(window, window.decorView)
+                if (on) {
+                    c.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                    c.hide(WindowInsetsCompat.Type.systemBars())
+                } else c.show(WindowInsetsCompat.Type.systemBars())
+            }
+        }
 
         /** 앱이 켜지기 전에 넘어온 파일 (없으면 빈 문자열) */
         @JavascriptInterface

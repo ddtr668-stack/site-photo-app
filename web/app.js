@@ -295,8 +295,25 @@ window.__openUrl = async (url, name) => {
 function showViewer(on) {
   $('#viewer').hidden = !on;
   $('#home').hidden = on;
-  if (!on) { closeSheet(); setMode('pan'); }
+  if (!on) { closeSheet(); setMode('pan'); setClean(false); }
 }
+
+// ---------------- 도면만 보기 ----------------
+let cleanTimer = 0;
+function setClean(on) {
+  const v = $('#viewer');
+  if (v.classList.contains('clean') === on) return;
+  if (on && state.mode !== 'pan') setMode('pan');
+  v.classList.toggle('clean', on);
+  const b = $('#btnUnclean');
+  b.hidden = !on; b.classList.remove('dim');
+  clearTimeout(cleanTimer);
+  if (on) cleanTimer = setTimeout(() => b.classList.add('dim'), 2500);
+  try { if (NATIVE && NATIVE.fullscreen) NATIVE.fullscreen(on); } catch (e) {}
+  setTimeout(() => { if (!v.hidden) resize(); }, 250);
+}
+$('#btnClean').addEventListener('click', () => setClean(true));
+$('#btnUnclean').addEventListener('click', () => setClean(false));
 $('#btnHome').addEventListener('click', () => { showViewer(false); });
 
 // ---------------- 장면 만들기 ----------------
@@ -2318,6 +2335,7 @@ window.__onBack = () => {
   if (!$('#note').hidden) { closeNote(); return true; }
   if (!$('#sheet').hidden) { closeSheet(); return true; }
   if (!$('#viewer').hidden) {
+    if ($('#viewer').classList.contains('clean')) { setClean(false); return true; }
     if (state.sel) { state.sel = null; requestDraw(); return true; }
     if (state.mode !== 'pan') {
       if (state.meas.pts.length) { state.meas.pts = []; updatePanel(); requestDraw(); return true; }
