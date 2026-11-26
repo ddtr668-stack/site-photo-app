@@ -622,16 +622,30 @@ const ctx = cv.getContext('2d', { alpha: false });
 let DPR = 1, CW = 0, CH = 0;
 let lastFullMs = 0, snapshot = null, snapView = null, needFull = false, rafId = 0, interacting = false, idleTimer = 0;
 
+// 큰 화면(태블릿)에서 캔버스가 너무 크면 그래픽 메모리가 모자라 화면이 깜박이거나 검게 빠진다.
+// → 캔버스 픽셀 수를 약 320만 개로 제한한다 (폰은 그대로, 태블릿은 살짝 낮은 해상도).
+const MAX_CANVAS_PX = 3.2e6;
 function resize() {
-  DPR = Math.min(window.devicePixelRatio || 1, 2.5);
   const r = cv.getBoundingClientRect();
+  const css = Math.max(1, r.width * r.height);
+  DPR = Math.min(window.devicePixelRatio || 1, 2.5, Math.sqrt(MAX_CANVAS_PX / css));
+  DPR = Math.max(DPR, 0.75);
   CW = Math.max(1, Math.round(r.width * DPR)); CH = Math.max(1, Math.round(r.height * DPR));
   if (cv.width !== CW || cv.height !== CH) { cv.width = CW; cv.height = CH; }
-  const ik = document.getElementById('ink');
-  if (ik.width !== CW || ik.height !== CH) { ik.width = CW; ik.height = CH; }
+  sizeInk();
   snapshot = null;
   requestDraw(true);
 }
+// 잉크 층은 메모 모드에서만 화면 크기로 쓰고, 아닐 때는 메모리를 돌려준다
+function sizeInk() {
+  const ik = document.getElementById('ink');
+  const on = state.mode === 'mark';
+  const w = on ? CW : 1, h = on ? CH : 1;
+  if (ik.width !== w || ik.height !== h) { ik.width = w; ik.height = h; }
+}
+// 그래픽 메모리가 부족해 캔버스를 잃었다가 되찾으면 다시 그린다
+cv.addEventListener('contextlost', (e) => { e.preventDefault(); snapshot = null; });
+cv.addEventListener('contextrestored', () => { snapshot = null; requestDraw(true); });
 window.addEventListener('resize', () => { if (!$('#viewer').hidden) resize(); });
 
 function fitView(box) {
@@ -671,7 +685,7 @@ function frame() {
     ctx.fillRect(0, 0, CW, CH);
     const dx = (snapView.cx - v.cx) * v.s + CW / 2 - CW / 2 * k;
     const dy = (v.cy - snapView.cy) * v.s + CH / 2 - CH / 2 * k;
-    ctx.drawImage(snapshot, dx, dy, CW * k, CH * k);
+    ctx.drawImage(snapshot, 0, 0, snapshot.width, snapshot.height, dx, dy, CW * k, CH * k);
   } else if (interacting && slow) {
     drawScene(ctx, CW, CH, state.view, { ...opts, fast: true });
   } else {
@@ -680,8 +694,9 @@ function frame() {
     lastFullMs = performance.now() - t0;
     needFull = false;
     if (lastFullMs > 28) {
-      if (!snapshot || snapshot.width !== CW || snapshot.height !== CH) { snapshot = document.createElement('canvas'); snapshot.width = CW; snapshot.height = CH; }
-      snapshot.getContext('2d').drawImage(cv, 0, 0);
+      const sw = Math.ceil(CW / 2), sh = Math.ceil(CH / 2);
+      if (!snapshot || snapshot.width !== sw || snapshot.height !== sh) { snapshot = document.createElement('canvas'); snapshot.width = sw; snapshot.height = sh; }
+      snapshot.getContext('2d', { alpha: false }).drawImage(cv, 0, 0, sw, sh);
       snapView = { ...state.view };
     }
   }
@@ -940,6 +955,7 @@ function setMode(m) {
   document.querySelectorAll('.tools [data-mode]').forEach((b) => b.classList.toggle('on', b.dataset.mode === m));
   $('#mpanel').hidden = !isMeasure();
   $('#kpanel').hidden = m !== 'mark';
+  sizeInk();
   if (m === 'mark') markHint();
   state.draft = null; state.sel = null; state.lifted = null;
   $('#blkbar').hidden = true;
