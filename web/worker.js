@@ -1,4 +1,5 @@
 // 도면 해석 워커: DWG/DXF → 화면에 그리기 쉬운 형태(선·면·글자·스냅점)로 바꾼다.
+// ※ 이 파일의 결과 형식이나 해석 방식을 바꾸면 app.js의 MODEL_VER를 올릴 것 (저장해 둔 옛 결과 무효화)
 // LibreDWG(WebAssembly)로 파일을 읽고, 블록·치수·해치까지 펼쳐서 넘긴다.
 import { LibreDwg, Dwg_File_Type } from './vendor/libredwg/dist/libredwg-web.js';
 
@@ -9,6 +10,7 @@ function getLib() {
 }
 
 self.onmessage = async (ev) => {
+  if (ev.data && ev.data.warm) { getLib().catch(() => { libPromise = null; }); return; } // 앱 켤 때 엔진 미리 준비
   const { id, buf } = ev.data;
   const say = (t) => self.postMessage({ id, progress: t });
   try {

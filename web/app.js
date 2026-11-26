@@ -61,6 +61,17 @@ function toast(msg, ms = 2600) {
 function busy(on, text) {
   $('#busy').hidden = !on;
   if (text) $('#busyText').textContent = text;
+  if (!on) busyImg(null);
+}
+// 여는 동안 보여줄 미리보기 그림
+let busyImgUrl = null;
+function busyImg(blob) {
+  const im = $('#busyImg');
+  if (busyImgUrl) { URL.revokeObjectURL(busyImgUrl); busyImgUrl = null; }
+  if (!blob) { im.hidden = true; im.removeAttribute('src'); return; }
+  busyImgUrl = URL.createObjectURL(blob);
+  im.onerror = () => { im.hidden = true; };
+  im.src = busyImgUrl; im.hidden = false;
 }
 const fmtNum = (v, d = 0) => v.toLocaleString('ko-KR', { minimumFractionDigits: d, maximumFractionDigits: d });
 function fmtSize(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB'; }
@@ -78,12 +89,13 @@ const DB = {
   open() {
     if (this.db) return Promise.resolve(this.db);
     return new Promise((res, rej) => {
-      const r = indexedDB.open('sanggyu-dwg', 2);
+      const r = indexedDB.open('sanggyu-dwg', 3);
       r.onupgradeneeded = () => {
         const d = r.result;
         if (!d.objectStoreNames.contains('meta')) d.createObjectStore('meta', { keyPath: 'id' });
         if (!d.objectStoreNames.contains('data')) d.createObjectStore('data');
         if (!d.objectStoreNames.contains('notes')) d.createObjectStore('notes');
+        if (!d.objectStoreNames.contains('models')) d.createObjectStore('models');
       };
       r.onsuccess = () => { this.db = r.result; res(this.db); };
       r.onerror = () => rej(r.error);
@@ -179,6 +191,100 @@ async function showRecent() {
   }
 }
 
+// ---------------- 해석 결과 저장 (같은 파일은 다시 해석하지 않기) ----------------
+// 워커(해석 방식)를 바꾸면 MODEL_VER를 올려서 옛 저장분을 안 쓰게 한다
+const MODEL_VER = 'm1';
+const MC_MAX = 12;               // 저장해 둘 도면 수
+const MC_MAX_TOTAL = 400 * 1048576; // 저장 합계 한도
+const MC_MAX_ONE = 150 * 1048576;   // 이보다 큰 결과는 저장 안 함
+async function fileKey(buf) {
+  if (!(window.crypto && crypto.subtle)) return null;
+  const h = new Uint8Array(await crypto.subtle.digest('SHA-256', buf));
+  let x = '';
+  for (let i = 0; i < 12; i++) x += h[i].toString(16).padStart(2, '0');
+  return MODEL_VER + ':' + buf.byteLength + ':' + x;
+}
+function modelBytes(md) {
+  let n = 0;
+  for (const k of ['pl', 'fill', 'snaps', 'snapKinds']) if (md[k] && md[k].byteLength) n += md[k].byteLength;
+  n += (md.texts ? md.texts.length : 0) * 300;
+  for (const p of md.patterns || []) for (const r of p.rings || []) n += (r.length || 0) * 8;
+  return n;
+}
+const MC = {
+  idx() { try { return JSON.parse(store.get('mcache') || '[]'); } catch (e) { return []; } },
+  setIdx(a) { store.set('mcache', JSON.stringify(a)); },
+  async get(key) {
+    try {
+      const d = await DB.open();
+      const v = await new Promise((res) => {
+        const r = d.transaction('models').objectStore('models').get(key);
+        r.onsuccess = () => res(r.result || null);
+        r.onerror = () => res(null);
+      });
+      if (!v) { this.setIdx(this.idx().filter((e) => e.k !== key)); return null; }
+      const a = this.idx(), e = a.find((x) => x.k === key);
+      if (e) { e.t = Date.now(); this.setIdx(a); }
+      return v;
+    } catch (e) { return null; }
+  },
+  // 저장은 바로(동기로) 복사해 두고, 끝나기를 기다리지 않는다
+  put(key, md) {
+    const d = DB.db;
+    if (!d || !key) return;
+    const size = modelBytes(md);
+    if (size > MC_MAX_ONE) return;
+    let a = this.idx().filter((e) => e.k !== key);
+    a.push({ k: key, t: Date.now(), n: size });
+    a.sort((x, y) => y.t - x.t);
+    const drop = [];
+    let tot = 0;
+    a = a.filter((e, i) => { tot += e.n; if (i >= MC_MAX || tot > MC_MAX_TOTAL) { drop.push(e.k); return false; } return true; });
+    try {
+      const t = d.transaction('models', 'readwrite');
+      const os = t.objectStore('models');
+      const { transfer, ...plain } = md;
+      os.put(plain, key);
+      for (const k of drop) os.delete(k);
+      t.oncomplete = () => this.setIdx(a);
+      t.onerror = t.onabort = () => { try { this.setIdx(this.idx().filter((e) => e.k !== key)); } catch (e) {} };
+    } catch (e) {}
+  },
+};
+
+// DWG 안에 들어 있는 미리보기 그림 (R13 이상, BMP 또는 PNG)
+function dwgThumb(buf) {
+  try {
+    const b = new Uint8Array(buf);
+    if (b.length < 0x40 || b[0] !== 0x41 || b[1] !== 0x43) return null;
+    const dv = new DataView(buf);
+    const at = dv.getUint32(0x0D, true);
+    if (!at || at + 21 > b.length) return null;
+    const SENT = [0x1F, 0x25, 0x6D, 0x07, 0xD4, 0x36, 0x28, 0x28, 0x9D, 0x57, 0xCA, 0x3F, 0x9D, 0x44, 0x10, 0x2B];
+    for (let i = 0; i < 16; i++) if (b[at + i] !== SENT[i]) return null;
+    let p = at + 20;
+    const n = b[p++];
+    let best = null;
+    for (let i = 0; i < n && p + 9 <= b.length; i++, p += 9) {
+      const code = b[p], start = dv.getUint32(p + 1, true), size = dv.getUint32(p + 5, true);
+      if (!size || start + size > b.length) continue;
+      if (code === 6) best = { type: 'png', start, size };
+      else if (code === 2 && (!best || best.type !== 'png')) best = { type: 'bmp', start, size };
+    }
+    if (!best) return null;
+    const raw = b.slice(best.start, best.start + best.size);
+    if (best.type === 'png') return new Blob([raw], { type: 'image/png' });
+    const rv = new DataView(raw.buffer);
+    const hs = rv.getUint32(0, true), bits = rv.getUint16(14, true), used = rv.getUint32(32, true);
+    if (hs < 12 || hs > 124 || rv.getInt32(4, true) <= 0) return null;
+    const pal = (used || (bits <= 8 ? 1 << bits : 0)) * 4;
+    const out = new Uint8Array(14 + raw.length), ov = new DataView(out.buffer);
+    out[0] = 0x42; out[1] = 0x4D; ov.setUint32(2, out.length, true); ov.setUint32(10, 14 + hs + pal, true);
+    out.set(raw, 14);
+    return new Blob([out], { type: 'image/bmp' });
+  } catch (e) { return null; }
+}
+
 // ---------------- 파일 열기 ----------------
 let worker = null, jobId = 0;
 function getWorker() {
@@ -229,7 +335,16 @@ async function openBytes(buf, name, recentId = null) {
     let fileId = recentId;
     if (!fileId && mb <= RECENT_MAX_MB) { try { fileId = await DB.save(name, buf.slice(0)); } catch (e) {} }
     const t0 = performance.now();
-    const model = await parse(buf);
+    let key = null;
+    if (mb <= RECENT_MAX_MB) { try { key = await fileKey(buf); } catch (e) {} }
+    let model = key ? await MC.get(key) : null;
+    if (model) busy(true, '화면 준비 중…');
+    else {
+      const th = dwgThumb(buf);
+      if (th) busyImg(th);
+      model = await parse(buf);
+      if (key) MC.put(key, model);
+    }
     busy(true, '화면 준비 중…');
     await new Promise((r) => setTimeout(r, 0));
     const scene = buildScene(model);
@@ -2348,6 +2463,8 @@ window.__onBack = () => {
 
 // ---------------- 시작 ----------------
 showRecent();
+// 해석 엔진을 미리 준비해 둔다 (첫 도면 열기가 빨라짐)
+setTimeout(() => { try { getWorker().postMessage({ warm: true }); } catch (e) {} DB.open().catch(() => {}); }, 300);
 // 지난번에 도면을 열다가 앱이 멈췄으면 이유를 알려준다
 (() => {
   const op = store.get('opening');

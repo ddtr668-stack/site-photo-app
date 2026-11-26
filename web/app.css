@@ -89,6 +89,8 @@ select { background: var(--panel2); color: var(--ink); border: 0; border-radius:
 .seg button.on { background: var(--ink); color: var(--bg); }
 .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
 
+.busyimg { max-width: 92vw; max-height: 56vh; border-radius: 10px; object-fit: contain; box-shadow: 0 6px 24px rgba(0,0,0,.4); }
+.busyimg[hidden] { display: none; }
 .busy { position: fixed; inset: 0; background: rgba(14,17,19,.82); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; font-weight: 600; z-index: 20; }
 .spin { width: 38px; height: 38px; border-radius: 50%; border: 3.5px solid rgba(255,255,255,.15); border-top-color: var(--accent); animation: sp .8s linear infinite; }
 @keyframes sp { to { transform: rotate(360deg); } }
