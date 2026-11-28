@@ -424,6 +424,7 @@ async function openBytes(buf, name, recentId = null, incomingId = null) {
     busy(true, '화면 준비 중…');
     await new Promise((r) => setTimeout(r, 0));
     const scene = buildScene(model);
+    if (GLON) glUpload(scene); else ensurePaths(scene);
     state.scene = scene;
     state.file = { name, size };
     state.meas.pts = []; state.meas.done = []; state.meas.cursor = null;
@@ -525,66 +526,40 @@ function buildScene(md) {
     gx = gx < 0 ? 0 : gx >= G ? G - 1 : gx; gy = gy < 0 ? 0 : gy >= G ? G - 1 : gy;
     let c = cells[gy * G + gx];
     if (!c) {
-      c = cells[gy * G + gx] = { ox: fit[0] + (gx + 0.5) * cw, oy: fit[1] + (gy + 0.5) * ch, box: [Infinity, Infinity, -Infinity, -Infinity], strokes: new Map(), fills: new Map(), fillsEO: [] };
+      c = cells[gy * G + gx] = { ox: fit[0] + (gx + 0.5) * cw, oy: fit[1] + (gy + 0.5) * ch, box: [Infinity, Infinity, -Infinity, -Infinity], nl: 0, nf: 0 };
     }
     return c;
   };
   const grow = (c, x0, y0, x1, y1) => { const b = c.box; if (x0 < b[0]) b[0] = x0; if (y0 < b[1]) b[1] = y0; if (x1 > b[2]) b[2] = x1; if (y1 > b[3]) b[3] = y1; };
 
-  // 선
+  // 선: 어느 셀에 넣을지와 셀 범위만 먼저
   for (let i = 0; i < pl.length;) {
-    const st = pl[i], n = pl[i + 1], closed = pl[i + 2];
+    const n = pl[i + 1], closed = pl[i + 2];
     i += 3;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let k = 0; k < n; k++) { const x = pl[i + k * 2], y = pl[i + k * 2 + 1]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
     const c = cellAt((x0 + x1) / 2, (y0 + y1) / 2);
     grow(c, x0, y0, x1, y1);
-    let p = c.strokes.get(st);
-    if (!p) { p = new Path2D(); c.strokes.set(st, p); }
-    p.moveTo(pl[i] - c.ox, pl[i + 1] - c.oy);
-    for (let k = 1; k < n; k++) p.lineTo(pl[i + k * 2] - c.ox, pl[i + k * 2 + 1] - c.oy);
-    if (closed) p.closePath();
+    c.nl += n + (closed ? 1 : 0) + 1;
     i += n * 2;
   }
   // 면
   const fl = md.fill;
   for (let i = 0; i < fl.length;) {
-    const ci = fl[i], nr = fl[i + 1];
+    const nr = fl[i + 1];
     i += 2;
-    const rings = [];
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let r = 0; r < nr; r++) {
       const n = fl[i]; i++;
-      rings.push([i, n]);
       for (let k = 0; k < n; k++) { const x = fl[i + k * 2], y = fl[i + k * 2 + 1]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
       i += n * 2;
     }
     const c = cellAt((x0 + x1) / 2, (y0 + y1) / 2);
     grow(c, x0, y0, x1, y1);
-    const addRing = (p, start, n, reverse) => {
-      if (!reverse) {
-        p.moveTo(fl[start] - c.ox, fl[start + 1] - c.oy);
-        for (let k = 1; k < n; k++) p.lineTo(fl[start + k * 2] - c.ox, fl[start + k * 2 + 1] - c.oy);
-      } else {
-        p.moveTo(fl[start + (n - 1) * 2] - c.ox, fl[start + (n - 1) * 2 + 1] - c.oy);
-        for (let k = n - 2; k >= 0; k--) p.lineTo(fl[start + k * 2] - c.ox, fl[start + k * 2 + 1] - c.oy);
-      }
-      p.closePath();
-    };
-    if (nr === 1) {
-      const [s, n] = rings[0];
-      let area = 0;
-      for (let k = 0; k < n; k++) { const j = (k + 1) % n; area += fl[s + k * 2] * fl[s + j * 2 + 1] - fl[s + j * 2] * fl[s + k * 2 + 1]; }
-      let p = c.fills.get(ci);
-      if (!p) { p = new Path2D(); c.fills.set(ci, p); }
-      addRing(p, s, n, area < 0);
-    } else {
-      const p = new Path2D();
-      for (const [s, n] of rings) addRing(p, s, n, false);
-      c.fillsEO.push({ ci, p });
-    }
+    c.nf++;
   }
   const cellList = cells.filter(Boolean);
+  for (const c of cellList) c.strokes = null;
 
   // 글자
   const texts = md.texts.map((t) => {
@@ -630,9 +605,123 @@ function buildScene(md) {
   for (let i = 0; i < nk; i++) order[fillPos[keys[i]]++] = i;
 
   return {
-    fit, full, U, cells: cellList, styles: md.styles, colors: md.colors, texts, patterns,
+    md, cellAt, fit, full, U, cells: cellList, styles: md.styles, colors: md.colors, texts, patterns,
     snap: { pts: sn, kinds: md.snapKinds, start: counts, order, SG, x0: fit[0], y0: fit[1], cw: scw, ch: sch },
     colorCache: {},
+  };
+}
+
+// 2D 캔버스용 경로 (GPU를 못 쓰거나, 내보내기 할 때만 만든다)
+function ensurePaths(sc) {
+  if (sc.cells.length && sc.cells[0].strokes) return;
+  const md = sc.md, pl = md.pl, fl = md.fill;
+  for (const c of sc.cells) { c.strokes = new Map(); c.fills = new Map(); c.fillsEO = []; }
+  for (let i = 0; i < pl.length;) {
+    const st = pl[i], n = pl[i + 1], closed = pl[i + 2];
+    i += 3;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let k = 0; k < n; k++) { const x = pl[i + k * 2], y = pl[i + k * 2 + 1]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    const c = sc.cellAt((x0 + x1) / 2, (y0 + y1) / 2);
+    let p = c.strokes.get(st);
+    if (!p) { p = new Path2D(); c.strokes.set(st, p); }
+    p.moveTo(pl[i] - c.ox, pl[i + 1] - c.oy);
+    for (let k = 1; k < n; k++) p.lineTo(pl[i + k * 2] - c.ox, pl[i + k * 2 + 1] - c.oy);
+    if (closed) p.closePath();
+    i += n * 2;
+  }
+  for (let i = 0; i < fl.length;) {
+    const ci = fl[i], nr = fl[i + 1];
+    i += 2;
+    const rings = [];
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let r = 0; r < nr; r++) {
+      const n = fl[i]; i++;
+      rings.push([i, n]);
+      for (let k = 0; k < n; k++) { const x = fl[i + k * 2], y = fl[i + k * 2 + 1]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      i += n * 2;
+    }
+    const c = sc.cellAt((x0 + x1) / 2, (y0 + y1) / 2);
+    const addRing = (p, start, n, reverse) => {
+      if (!reverse) {
+        p.moveTo(fl[start] - c.ox, fl[start + 1] - c.oy);
+        for (let k = 1; k < n; k++) p.lineTo(fl[start + k * 2] - c.ox, fl[start + k * 2 + 1] - c.oy);
+      } else {
+        p.moveTo(fl[start + (n - 1) * 2] - c.ox, fl[start + (n - 1) * 2 + 1] - c.oy);
+        for (let k = n - 2; k >= 0; k--) p.lineTo(fl[start + k * 2] - c.ox, fl[start + k * 2 + 1] - c.oy);
+      }
+      p.closePath();
+    };
+    if (nr === 1) {
+      const [st0, n] = rings[0];
+      let area = 0;
+      for (let k = 0; k < n; k++) { const j = (k + 1) % n; area += fl[st0 + k * 2] * fl[st0 + j * 2 + 1] - fl[st0 + j * 2] * fl[st0 + k * 2 + 1]; }
+      let p = c.fills.get(ci);
+      if (!p) { p = new Path2D(); c.fills.set(ci, p); }
+      addRing(p, st0, n, area < 0);
+    } else {
+      const p = new Path2D();
+      for (const [st0, n] of rings) addRing(p, st0, n, false);
+      c.fillsEO.push({ ci, p });
+    }
+  }
+}
+
+// GPU용 자료: 셀마다 선(점마다 x, y, 누적 길이, 스타일)·면(삼각형) 배열
+function makeGLData(sc) {
+  const md = sc.md, pl = md.pl, fl = md.fill;
+  const lines = new Map(), lpos = new Map(), fills = new Map();
+  for (const c of sc.cells) { if (c.nl) { lines.set(c, new Float32Array(c.nl * 4)); lpos.set(c, 0); } }
+  for (let i = 0; i < pl.length;) {
+    const st = pl[i], n = pl[i + 1], closed = pl[i + 2];
+    i += 3;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let k = 0; k < n; k++) { const x = pl[i + k * 2], y = pl[i + k * 2 + 1]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    const c = sc.cellAt((x0 + x1) / 2, (y0 + y1) / 2);
+    const a = lines.get(c);
+    let p = lpos.get(c), d = 0, px = pl[i], py = pl[i + 1];
+    for (let k = 0; k < n; k++) {
+      const x = pl[i + k * 2], y = pl[i + k * 2 + 1];
+      d += Math.hypot(x - px, y - py); px = x; py = y;
+      a[p++] = x - c.ox; a[p++] = y - c.oy; a[p++] = d; a[p++] = st;
+    }
+    if (closed) {
+      const x = pl[i], y = pl[i + 1];
+      d += Math.hypot(x - px, y - py);
+      a[p++] = x - c.ox; a[p++] = y - c.oy; a[p++] = d; a[p++] = st;
+    }
+    a[p++] = 0; a[p++] = 0; a[p++] = 0; a[p++] = -1; // 다음 선과 끊기
+    lpos.set(c, p);
+    i += n * 2;
+  }
+  for (let i = 0; i < fl.length;) {
+    const ci = fl[i], nr = fl[i + 1];
+    i += 2;
+    const rings = [];
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let r = 0; r < nr; r++) {
+      const n = fl[i]; i++;
+      rings.push([i, n]);
+      for (let k = 0; k < n; k++) { const x = fl[i + k * 2], y = fl[i + k * 2 + 1]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      i += n * 2;
+    }
+    const c = sc.cellAt((x0 + x1) / 2, (y0 + y1) / 2);
+    let out = fills.get(c);
+    if (!out) { out = []; fills.set(c, out); }
+    const flat = [], holes = [];
+    for (let r = 0; r < rings.length; r++) {
+      const [st0, n] = rings[r];
+      if (r) holes.push(flat.length / 2);
+      for (let k = 0; k < n; k++) flat.push(fl[st0 + k * 2] - c.ox, fl[st0 + k * 2 + 1] - c.oy);
+    }
+    let tri;
+    if (rings.length === 1 && rings[0][1] === 3) tri = [0, 1, 2];
+    else if (rings.length === 1 && rings[0][1] === 4) tri = [0, 1, 2, 0, 2, 3];
+    else { try { tri = earcut(flat, holes.length ? holes : null, 2); } catch (e) { tri = []; } }
+    for (const t of tri) out.push(flat[t * 2], flat[t * 2 + 1], ci);
+  }
+  return {
+    styles: md.styles, nColors: md.colors.length,
+    cells: sc.cells.map((c) => ({ ox: c.ox, oy: c.oy, box: c.box, lines: lines.get(c) || null, fills: fills.has(c) ? new Float32Array(fills.get(c)) : null })),
   };
 }
 
@@ -641,16 +730,26 @@ function cssColors(scene, bg) {
   if (scene.colorCache[bg]) return scene.colorCache[bg];
   const fg = bg === 'white' ? '#000000' : '#FFFFFF';
   const bgc = bg === 'white' ? '#FFFFFF' : '#1A1E21';
-  const out = scene.colors.map((v) => {
+  const rgba = new Uint8Array(Math.max(1, scene.colors.length) * 4);
+  const fgv = bg === 'white' ? [0, 0, 0] : [255, 255, 255];
+  const bgv = bg === 'white' ? [255, 255, 255] : [0x1A, 0x1E, 0x21];
+  const out = scene.colors.map((v, i) => {
+    let r, g, b;
+    if (v === -1) [r, g, b] = fgv;
+    else if (v === -2) [r, g, b] = bgv;
+    else {
+      r = (v >> 16) & 255; g = (v >> 8) & 255; b = v & 255;
+      const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      if (bg === 'white' && lum > 0.55) { const k = 0.5 / lum; r *= k; g *= k; b *= k; }
+      if (bg !== 'white' && lum < 0.18) { const k = 0.35; r += (255 - r) * k; g += (255 - g) * k; b += (255 - b) * k; }
+      r = Math.round(r); g = Math.round(g); b = Math.round(b);
+    }
+    rgba[i * 4] = r; rgba[i * 4 + 1] = g; rgba[i * 4 + 2] = b; rgba[i * 4 + 3] = 255;
     if (v === -1) return fg;
     if (v === -2) return bgc;
-    let r = (v >> 16) & 255, g = (v >> 8) & 255, b = v & 255;
-    const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    if (bg === 'white' && lum > 0.55) { const k = 0.5 / lum; r *= k; g *= k; b *= k; }
-    if (bg !== 'white' && lum < 0.18) { const k = 0.35; r += (255 - r) * k; g += (255 - g) * k; b += (255 - b) * k; }
-    return 'rgb(' + Math.round(r) + ',' + Math.round(g) + ',' + Math.round(b) + ')';
+    return 'rgb(' + r + ',' + g + ',' + b + ')';
   });
-  out.bg = bgc; out.fg = fg;
+  out.bg = bgc; out.fg = fg; out.rgba = rgba; out.bgf = bgv.map((x) => x / 255);
   scene.colorCache[bg] = out;
   return out;
 }
@@ -670,6 +769,7 @@ function drawScene(ctx, W, H, view, o) {
   const vis = (b) => b[2] >= vx0 && b[0] <= vx1 && b[3] >= vy0 && b[1] <= vy1;
   const setT = (ox, oy) => ctx.setTransform(s, 0, 0, -s, (ox - view.cx) * s + W / 2, (view.cy - oy) * s + H / 2);
   const lw = o.lw / s;
+  ensurePaths(sc);
   const cells = sc.cells.filter((c) => vis(c.box));
 
   // 1) 채우기
@@ -702,6 +802,17 @@ function drawScene(ctx, W, H, view, o) {
   }
   ctx.setLineDash([]);
   // 4) 글자
+  if (!o.noText) drawTexts(ctx, W, H, view, cols, o, vis);
+}
+
+function drawTop(ctx, W, H, view, o) {
+  const sc = state.scene;
+  if (!sc) return;
+  const cols = cssColors(sc, o.bg);
+  const s = view.s;
+  const vx0 = view.cx - W / 2 / s, vx1 = view.cx + W / 2 / s, vy0 = view.cy - H / 2 / s, vy1 = view.cy + H / 2 / s;
+  const vis = (b) => b[2] >= vx0 && b[0] <= vx1 && b[3] >= vy0 && b[1] <= vy1;
+  if (!o.fast) for (const p of sc.patterns) if (vis(p.box)) drawPattern(ctx, W, H, view, p, cols[p.c], o);
   if (!o.noText) drawTexts(ctx, W, H, view, cols, o, vis);
 }
 
@@ -876,7 +987,20 @@ function invert(m) {
 
 // ---------------- 화면 캔버스 ----------------
 const cv = $('#cv');
-const ctx = cv.getContext('2d', { alpha: false });
+// GPU(WebGL2)를 쓸 수 있으면 선·면은 #gl에, 글자·메모는 투명한 #cv에 그린다
+const glcv = $('#gl');
+const GLON = store.get('nogl') !== '1' && typeof GLR !== 'undefined' && GLR.init(glcv);
+if (!GLON) glcv.hidden = true;
+const ctx = cv.getContext('2d', { alpha: GLON });
+let lastTopMs = 0;
+function useGL() { return GLON && GLR.active && state.scene && state.scene.glOk; }
+function glUpload(sc) {
+  if (!GLON) return;
+  const t0 = performance.now();
+  try { sc.glOk = GLR.upload(makeGLData(sc)); } catch (e) { console.warn('GPU 준비 실패', e); sc.glOk = false; }
+  console.log('gl upload ms', Math.round(performance.now() - t0), sc.glOk);
+}
+if (GLON) GLR.onRestore = () => { if (state.scene) { glUpload(state.scene); requestDraw(true); } };
 let DPR = 1, CW = 0, CH = 0;
 let lastFullMs = 0, snapshot = null, snapView = null, needFull = false, rafId = 0, interacting = false, idleTimer = 0;
 
@@ -890,6 +1014,7 @@ function resize() {
   DPR = Math.max(DPR, 0.75);
   CW = Math.max(1, Math.round(r.width * DPR)); CH = Math.max(1, Math.round(r.height * DPR));
   if (cv.width !== CW || cv.height !== CH) { cv.width = CW; cv.height = CH; }
+  if (GLON) GLR.resize(CW, CH);
   sizeInk();
   snapshot = null;
   requestDraw(true);
@@ -934,6 +1059,21 @@ function frame() {
   rafId = 0;
   if (!state.scene || $('#viewer').hidden) return;
   const opts = { bg: state.bg, lw: 0.85 * DPR, px: DPR };
+  if (useGL()) {
+    const cols = cssColors(state.scene, state.bg);
+    GLR.palette(cols.rgba, state.bg);
+    GLR.render(state.view, CW, CH, cols.bgf, { lw: opts.lw, px: DPR });
+    const t0 = performance.now();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, CW, CH);
+    const fast = interacting && lastTopMs > 20;
+    drawTop(ctx, CW, CH, state.view, { ...opts, fast });
+    if (!fast) lastTopMs = performance.now() - t0;
+    drawOverlay(ctx, CW, CH, state.view, { bg: state.bg, px: DPR, live: true });
+    drawLoupe();
+    if (inkClearAfterFrame && !state.draft) { inkClearAfterFrame = false; ictx.setTransform(1, 0, 0, 1, 0, 0); ictx.clearRect(0, 0, ink.width, ink.height); }
+    return;
+  }
   const slow = lastFullMs > 28;
   if (interacting && slow && snapshot) {
     // 움직이는 중: 지난 그림을 늘리고 옮겨서 보여주기
@@ -1192,6 +1332,7 @@ function drawLoupe() {
   lctx.setTransform(1, 0, 0, 1, 0, 0);
   lctx.fillStyle = cssColors(state.scene, state.bg).bg;
   lctx.fillRect(0, 0, ld, ld);
+  if (useGL()) lctx.drawImage(glcv, sp.x - src / 2, sp.y - src / 2, src, src, 0, 0, ld, ld);
   lctx.drawImage(cv, sp.x - src / 2, sp.y - src / 2, src, src, 0, 0, ld, ld);
   lctx.strokeStyle = state.bg === 'white' ? '#D9480F' : '#F0B400';
   lctx.lineWidth = 1.5 * DPR;

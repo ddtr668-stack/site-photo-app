@@ -36,6 +36,7 @@
 
 <!-- 도면 화면 -->
 <section id="viewer" hidden>
+  <canvas id="gl"></canvas>
   <canvas id="cv"></canvas>
   <canvas id="ink"></canvas>
   <header class="topbar">
@@ -145,6 +146,8 @@
 
 <script src="vendor/jspdf.umd.min.js" defer></script>
 <script src="vendor/perfect-freehand.js"></script>
+<script src="vendor/earcut.min.js"></script>
+<script src="gl.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
