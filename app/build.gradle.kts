@@ -21,6 +21,22 @@ android {
         targetSdk = 34
         versionCode = runNo
         versionName = "1.0.$runNo"
+        ndk {
+            // 네이티브 엔진은 64비트 ARM(요즘 폰·탭)만. 그 밖의 기기는 예전 엔진(WASM)으로 연다
+            abiFilters += listOf("arm64-v8a")
+        }
+        externalNativeBuild {
+            cmake {
+                arguments += listOf("-DANDROID_STL=none")
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     signingConfigs {

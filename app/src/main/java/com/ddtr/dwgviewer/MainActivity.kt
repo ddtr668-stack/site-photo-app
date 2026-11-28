@@ -1,12 +1,20 @@
 package com.ddtr.dwgviewer
 
 import android.app.Activity
+import android.content.ComponentName
 import android.content.ContentValues
+import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.IBinder
+import android.os.Looper
+import android.os.Message
+import android.os.Messenger
 import android.os.Parcelable
 import android.os.Environment
 import android.provider.MediaStore
@@ -47,6 +55,73 @@ class MainActivity : Activity() {
     private var pageReady = false
     private var pendingJson: String? = null
     private val lock = Any()
+
+    // ---- 네이티브 엔진 (따로 된 프로세스) ----
+    private var engine: Messenger? = null
+    private var engineBound = false
+    private val engineJobs = LinkedHashMap<Int, Bundle>() // 보냈거나 연결을 기다리는 일
+    private val engineSent = HashSet<Int>()
+    private val engineReply = Messenger(object : Handler(Looper.getMainLooper()) {
+        override fun handleMessage(msg: Message) {
+            if (msg.what != EngineService.MSG_DONE) return
+            val d = msg.data
+            val job = d.getInt("job")
+            if (engineJobs.remove(job) == null) return
+            engineSent.remove(job)
+            val r = d.getLongArray("r")
+            val o = JSONObject()
+            if (r != null && r.size >= 6) {
+                o.put("ok", r[0] == 0L).put("code", r[0]).put("dwgErr", r[1]).put("entities", r[2])
+                    .put("blocks", r[3]).put("bytes", r[4]).put("ms", r[5])
+            } else o.put("ok", false).put("error", d.getString("err") ?: "?")
+            engineDone(job, o)
+        }
+    })
+    private val engineConn = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName, binder: IBinder) {
+            engine = Messenger(binder)
+            for ((job, b) in engineJobs) if (job !in engineSent) sendEngine(job, b)
+        }
+        override fun onServiceDisconnected(name: ComponentName) {
+            // 엔진 프로세스가 죽음 (메모리 부족, 손상된 파일 등) → 맡긴 일은 실패로 알린다
+            engine = null
+            val jobs = engineJobs.keys.toList()
+            engineJobs.clear(); engineSent.clear()
+            for (j in jobs) engineDone(j, JSONObject().put("ok", false).put("crash", true))
+        }
+        override fun onBindingDied(name: ComponentName) {
+            try { unbindService(this) } catch (e: Exception) { }
+            engineBound = false
+            engine = null
+            bindEngine()
+        }
+    }
+
+    private fun bindEngine(): Boolean {
+        if (!engineBound) {
+            engineBound = try {
+                bindService(Intent(this, EngineService::class.java), engineConn, Context.BIND_AUTO_CREATE)
+            } catch (e: Exception) { false }
+        }
+        return engineBound
+    }
+
+    private fun sendEngine(job: Int, b: Bundle) {
+        val m = engine ?: return
+        try {
+            m.send(Message.obtain(null, EngineService.MSG_PARSE).apply { data = b; replyTo = engineReply })
+            engineSent.add(job)
+        } catch (e: Exception) {
+            engineJobs.remove(job)
+            engineDone(job, JSONObject().put("ok", false).put("error", "send"))
+        }
+    }
+
+    private fun engineDone(job: Int, o: JSONObject) {
+        runOnUiThread {
+            web.evaluateJavascript("window.__engineDone&&window.__engineDone($job,$o)", null)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -150,6 +225,11 @@ class MainActivity : Activity() {
         } ?: return
         // 같은 파일을 두 번 열지 않도록 표시
         i.action = Intent.ACTION_MAIN
+        importUri(uri)
+    }
+
+    /** 파일을 캐시(incoming)에 복사하고 페이지에 열라고 알린다. */
+    private fun importUri(uri: Uri) {
         Thread {
             val json = try {
                 val name = displayName(uri)
@@ -217,6 +297,12 @@ class MainActivity : Activity() {
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_OPEN) {
+            val u = data?.data
+            if (resultCode == RESULT_OK && u != null) importUri(u)
+            else web.evaluateJavascript("window.__pickCancel&&window.__pickCancel()", null)
+            return
+        }
         val cb = fileCallback ?: return
         fileCallback = null
         if (requestCode != REQ_PICK || resultCode != RESULT_OK) { cb.onReceiveValue(null); return }
@@ -230,6 +316,12 @@ class MainActivity : Activity() {
             cam != null && shot != null && shot.exists() && shot.length() > 0 -> cb.onReceiveValue(arrayOf(cam))
             else -> cb.onReceiveValue(null)
         }
+    }
+
+    override fun onDestroy() {
+        if (engineBound) { try { unbindService(engineConn) } catch (e: Exception) { } }
+        engineBound = false
+        super.onDestroy()
     }
 
     @Deprecated("Deprecated in Java")
@@ -257,6 +349,71 @@ class MainActivity : Activity() {
                     c.hide(WindowInsetsCompat.Type.systemBars())
                 } else c.show(WindowInsetsCompat.Type.systemBars())
             }
+        }
+
+        // ---- 네이티브 엔진 ----
+        /** 엔진 프로세스를 미리 띄워 둔다 */
+        @JavascriptInterface
+        fun engineWarm(): Boolean {
+            runOnUiThread { bindEngine() }
+            return true
+        }
+
+        /** incoming 폴더의 파일을 해석해 <이름>.sgdb로 만든다. 끝나면 window.__engineDone(job, 결과) */
+        @JavascriptInterface
+        fun engineParse(job: Int, name: String, dxf: Boolean): String {
+            if (!safeName(name)) return "err"
+            val dir = File(cacheDir, "incoming")
+            val src = File(dir, name)
+            if (!src.exists()) return "err"
+            val b = Bundle().apply {
+                putInt("job", job)
+                putString("in", src.absolutePath)
+                putString("out", File(dir, "$name.sgdb").absolutePath)
+                putBoolean("dxf", dxf)
+            }
+            runOnUiThread {
+                if (!bindEngine()) { engineDone(job, JSONObject().put("ok", false).put("error", "bind")); return@runOnUiThread }
+                engineJobs[job] = b
+                if (engine != null) sendEngine(job, b)
+            }
+            return "ok"
+        }
+
+        /** 다 쓴 임시 파일 지우기 */
+        @JavascriptInterface
+        fun engineDiscard(name: String) {
+            if (!safeName(name)) return
+            try { File(File(cacheDir, "incoming"), name).delete() } catch (e: Exception) { }
+        }
+
+        /** 페이지에 있는 도면 바이트를 incoming 폴더로 옮기기 (조각조각 base64) */
+        @JavascriptInterface
+        fun stageBegin(): String {
+            return try {
+                val id = UUID.randomUUID().toString() + ".bin"
+                File(File(cacheDir, "incoming").apply { mkdirs() }, id).writeBytes(ByteArray(0))
+                id
+            } catch (e: Exception) { "" }
+        }
+
+        @JavascriptInterface
+        fun stageAppend(id: String, b64: String): Boolean {
+            if (!safeName(id)) return false
+            return try {
+                FileOutputStream(File(File(cacheDir, "incoming"), id), true).use { it.write(Base64.decode(b64, Base64.DEFAULT)) }
+                true
+            } catch (e: Exception) { false }
+        }
+
+        /** 앱 안 '열기': 시스템 파일 선택 → incoming에 복사 → window.__openUrl */
+        @JavascriptInterface
+        fun pickFile(): Boolean {
+            val pick = Intent(Intent.ACTION_GET_CONTENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*")
+            return try {
+                runOnUiThread { startActivityForResult(Intent.createChooser(pick, "도면 파일 선택 (DWG · DXF)"), REQ_OPEN) }
+                true
+            } catch (e: Exception) { false }
         }
 
         /** 앱이 켜지기 전에 넘어온 파일 (없으면 빈 문자열) */
@@ -347,9 +504,13 @@ class MainActivity : Activity() {
         return if (base.lowercase().endsWith(ext)) base else "$base$ext"
     }
 
+    private fun safeName(n: String): Boolean =
+        n.isNotEmpty() && n.length < 200 && !n.contains('/') && !n.contains('\\') && !n.startsWith(".")
+
     companion object {
         const val HOST = "appassets.androidplatform.net"
         const val FOLDER = "상규도면뷰어"
         const val REQ_PICK = 21
+        const val REQ_OPEN = 22
     }
 }

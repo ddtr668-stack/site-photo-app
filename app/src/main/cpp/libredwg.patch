@@ -1,0 +1,232 @@
+diff --git a/src/bits.c b/src/bits.c
+index 556f9bc..0d7eb09 100644
+--- a/src/bits.c
++++ b/src/bits.c
+@@ -1612,8 +1612,15 @@ bit_read_fixed (Bit_Chain *restrict dat, BITCODE_RC *restrict dest,
+     }
+   else
+     {
++      /* 빠른 경로: 비트가 어긋난 바이트들을 한 번에 이어 붙인다 */
++      const unsigned char *src = &dat->chain[dat->byte];
++      const unsigned sh = dat->bit, rs = 8 - dat->bit;
+       for (size_t i = 0; i < length; i++)
+-        dest[i] = bit_read_RC (dat);
++        dest[i] = (unsigned char)((src[i] << sh) | (src[i + 1] >> rs));
++      dat->byte += length;
++      if (0)
++        for (size_t i = 0; i < length; i++)
++          dest[i] = bit_read_RC (dat);
+     }
+   return 0;
+ }
+diff --git a/src/classes.inc b/src/classes.inc
+index a71f29b..bf0681d 100644
+--- a/src/classes.inc
++++ b/src/classes.inc
+@@ -25,6 +25,13 @@
+ # error ACTION define missing: decode, encode, dxf, indxf, print, free, ...
+ #endif
+ 
++#ifndef VT_CACHE_STORE
++#  define VT_CACHE_STORE(fn)
++#endif
++#ifndef VT_CACHE_UNHANDLED
++#  define VT_CACHE_UNHANDLED
++#endif
++
+ #define WARN_UNHANDLED_CLASS                                                  \
+   LOG_WARN ("Unhandled Class %s %d %s (0x%x%s) %u/" FORMAT_HV,              \
+             is_entity ? "entity" : "object", klass->number, klass->dxfname,   \
+@@ -88,6 +95,7 @@
+         obj->klass = klass; \
+       } \
+       CHECK_OBJECT_TYPE (_name) \
++      VT_CACHE_STORE (DWG_FUNC_N(action,_name)); \
+       return DWG_FUNC_N(action,_name) (dat, obj); \
+     }
+ #define STABLE_CLASS_DXF(action, _name, _dxfname) \
+@@ -100,6 +108,7 @@
+         obj->klass = klass; \
+       } \
+       CHECK_OBJECT_TYPE (_name) \
++      VT_CACHE_STORE (DWG_FUNC_N(action,_name)); \
+       return DWG_FUNC_N(action,_name) (dat, obj); \
+     }
+ #define STABLE_CLASS_CPP(action, _name, _cppname) \
+@@ -112,6 +121,7 @@
+         obj->klass = klass; \
+       } \
+       CHECK_OBJECT_TYPE (_name) \
++      VT_CACHE_STORE (DWG_FUNC_N(action,_name)); \
+       return DWG_FUNC_N(action,_name) (dat, obj); \
+     }
+ #define UNSTABLE_CLASS(action, _name) \
+@@ -152,6 +162,7 @@
+         obj->klass = klass; \
+       } \
+       CHECK_OBJECT_TYPE (_name) \
++      VT_CACHE_STORE (DWG_FUNC_N(action,_name)); \
+       return DWG_FUNC_N(action,_name) (dat, obj); \
+     }
+ #define UNSTABLE_CLASS_DXF_ALLOW_DXF(action, _name, _dxfname) \
+@@ -165,6 +176,7 @@
+         obj->klass = klass; \
+       } \
+       CHECK_OBJECT_TYPE (_name) \
++      VT_CACHE_STORE (DWG_FUNC_N(action,_name)); \
+       return DWG_FUNC_N(action,_name) (dat, obj); \
+     }
+ #define UNSTABLE_CLASS_CPP(action, _name, _cppname) \
+@@ -189,6 +201,7 @@
+         obj->dxfname = (char*) #_name; \
+         obj->klass = klass; \
+       } \
++      VT_CACHE_UNHANDLED; \
+       UNHANDLED_CLASS_RETURN; \
+     }
+ #define UNHANDLED_CLASS_DXF(action, _name, _dxfname) \
+@@ -200,6 +213,7 @@
+         obj->dxfname = (char*) #_dxfname; \
+         obj->klass = klass; \
+       } \
++      VT_CACHE_UNHANDLED; \
+       UNHANDLED_CLASS_RETURN; \
+     }
+ #define UNHANDLED_CLASS_CPP(action, _name, _cppname) \
+@@ -211,6 +225,7 @@
+         obj->dxfname = (char*) #_name; \
+         obj->klass = klass; \
+       } \
++      VT_CACHE_UNHANDLED; \
+       UNHANDLED_CLASS_RETURN; \
+     }
+ 
+diff --git a/src/decode.c b/src/decode.c
+index f4cda4b..1629e9a 100644
+--- a/src/decode.c
++++ b/src/decode.c
+@@ -148,11 +148,26 @@ log_header_handles (Dwg_Data *restrict dwg)
+  * everything in dwg is cleared
+  * and then either read from dat, or set to a default.
+  */
++#define VT_CACHE_MAX 1024
++static struct
++{
++  const char *name;
++  const char *dxfname;
++  int type;
++  int (*fn) (Bit_Chain *restrict, Dwg_Object *restrict);
++  int state; /* 1 해독 함수, 2 처리 안 하는 클래스, 3 모르는 클래스 */
++} vt_cache[VT_CACHE_MAX];
++static Dwg_Data *vt_cache_dwg = NULL;
++static unsigned vt_cache_n = 0;
++
+ EXPORT int
+ dwg_decode (Bit_Chain *restrict dat, Dwg_Data *restrict dwg)
+ {
+   char magic[11];
+ 
++  vt_cache_dwg = NULL; /* 파일마다 클래스 캐시 새로 */
++  vt_cache_n = 0;
++
+   dwg->num_object_refs = 0;
+   // dwg->num_layers = 0; // see now dwg->layer_control->num_entries
+   dwg->num_entities = 0;
+@@ -4170,6 +4185,7 @@ dwg_decode_eed_data (Bit_Chain *restrict dat, Dwg_Eed_Data *restrict data,
+   return 0;
+ }
+ 
++int dwg_skip_eed = 0;
+ /* for objects and entities */
+ int
+ dwg_decode_eed (Bit_Chain *restrict dat, Dwg_Object_Object *restrict obj)
+@@ -4214,6 +4230,20 @@ dwg_decode_eed (Bit_Chain *restrict dat, Dwg_Object_Object *restrict obj)
+           return DWG_ERR_INVALIDEED;
+         }
+ 
++      if (dwg_skip_eed && dat->from_version >= R_13b1
++          && _obj->fixedtype != DWG_TYPE_MLEADERSTYLE)
++        { /* 화면 표시에 안 쓰는 확장 데이터는 읽지 않고 건너뛴다 */
++          Dwg_Handle hh;
++          if (bit_read_H (dat, &hh))
++            {
++              obj->num_eed = 0;
++              return DWG_ERR_INVALIDEED;
++            }
++          dat->byte += size;
++          if (dat->byte > dat->size)
++            dat->byte = dat->size;
++          continue;
++        }
+       obj->num_eed = idx + 1;
+       if (idx) /* just extend by one. not in chunks for now */
+         {
+@@ -5693,6 +5723,7 @@ check_POLYLINE_handles (Dwg_Object *obj)
+  * decode object by class name, not type. if type > 500.
+  * returns 0 on success
+  */
++
+ static int
+ dwg_decode_variable_type (Dwg_Data *restrict dwg, Bit_Chain *dat,
+                           Bit_Chain *hdl_dat, Dwg_Object *restrict obj)
+@@ -5718,12 +5749,60 @@ dwg_decode_variable_type (Dwg_Data *restrict dwg, Bit_Chain *dat,
+       LOG_ERROR ("Invalid class %d", obj->type);
+       return DWG_ERR_UNHANDLEDCLASS;
+     }
++  /* 클래스 이름 비교 결과를 기억해 두고 다시 쓴다 (객체마다 수백 번 문자열 비교하던 것) */
++  if (vt_cache_dwg == dwg && vt_cache_n == dwg->num_classes && i < VT_CACHE_MAX
++      && vt_cache[i].state)
++    {
++      if (vt_cache[i].state == 1)
++        {
++          obj->name = (char *)vt_cache[i].name;
++          obj->dxfname = (char *)vt_cache[i].dxfname;
++          obj->fixedtype = vt_cache[i].type;
++          obj->klass = klass;
++          return vt_cache[i].fn (dat, obj);
++        }
++      if (vt_cache[i].state == 2)
++        {
++          obj->name = (char *)vt_cache[i].name;
++          obj->dxfname = (char *)vt_cache[i].dxfname;
++          obj->klass = klass;
++          return DWG_ERR_UNHANDLEDCLASS;
++        }
++      obj->dxfname = klass->dxfname;
++      return DWG_ERR_UNHANDLEDCLASS;
++    }
++  if (vt_cache_dwg != dwg || vt_cache_n != dwg->num_classes)
++    {
++      memset (vt_cache, 0, sizeof (vt_cache));
++      vt_cache_dwg = dwg;
++      vt_cache_n = dwg->num_classes;
++    }
+   obj->dxfname = klass->dxfname;
+   is_entity = dwg_class_is_entity (klass);
+ 
+   // clang-format off
+   // global class dispatcher
++#define VT_CACHE_STORE(f)                                                     \
++  if (i < VT_CACHE_MAX)                                                       \
++    {                                                                         \
++      vt_cache[i].name = obj->name;                                           \
++      vt_cache[i].dxfname = obj->dxfname;                                     \
++      vt_cache[i].type = obj->fixedtype;                                      \
++      vt_cache[i].fn = f;                                                     \
++      vt_cache[i].state = 1;                                                  \
++    }
++#define VT_CACHE_UNHANDLED                                                    \
++  if (i < VT_CACHE_MAX)                                                       \
++    {                                                                         \
++      vt_cache[i].name = obj->name;                                           \
++      vt_cache[i].dxfname = obj->dxfname;                                     \
++      vt_cache[i].state = 2;                                                  \
++    }
+   #include "classes.inc"
++#undef VT_CACHE_STORE
++#undef VT_CACHE_UNHANDLED
++  if (i < VT_CACHE_MAX)
++    vt_cache[i].state = 3;
+   // clang-format on
+ 
+   LOG_WARN ("Unknown Class %s %d %s (0x%x%s)", is_entity ? "entity" : "object",

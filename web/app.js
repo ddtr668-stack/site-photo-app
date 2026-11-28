@@ -291,7 +291,8 @@ function getWorker() {
   if (!worker) worker = new Worker('worker.js', { type: 'module' });
   return worker;
 }
-function parse(buf) {
+function parse(buf) { return parseMsg(null, buf); }
+function parseMsg(m, buf) {
   return new Promise((resolve, reject) => {
     const id = ++jobId;
     const w = getWorker();
@@ -301,7 +302,7 @@ function parse(buf) {
       if (d.progress) { busy(true, d.progress); return; }
       w.removeEventListener('message', onMsg);
       w.removeEventListener('error', onErr);
-      if (d.ok) resolve(d.model); else reject(new Error(d.error));
+      if (d.ok) resolve(d.model); else { const er = new Error(d.error); er.user = d.user; reject(er); }
     };
     const onErr = (e) => {
       w.removeEventListener('message', onMsg); w.removeEventListener('error', onErr);
@@ -310,11 +311,85 @@ function parse(buf) {
     };
     w.addEventListener('message', onMsg);
     w.addEventListener('error', onErr);
-    w.postMessage({ id, buf }, [buf]);
+    if (m) w.postMessage({ id, ...m });
+    else w.postMessage({ id, buf }, [buf]);
   });
 }
 
-async function openBytes(buf, name, recentId = null) {
+// ---------------- 네이티브 엔진 (앱) ----------------
+// 앱(arm64)에서는 C로 만든 엔진이 따로 된 프로세스에서 도면을 읽고 .sgdb로 넘긴다.
+// 실패하거나 엔진이 죽으면 예전 엔진(WASM)으로 다시 연다.
+const ENGINE = !!(NATIVE && typeof NATIVE.engineParse === 'function');
+let engineJob = 0;
+const engineWait = new Map();
+window.__engineDone = (job, res) => {
+  const f = engineWait.get(job);
+  if (f) { engineWait.delete(job); f(res || { ok: false }); }
+};
+function engineRun(name, dxf) {
+  return new Promise((resolve) => {
+    const job = ++engineJob;
+    engineWait.set(job, resolve);
+    let r = '';
+    try { r = NATIVE.engineParse(job, name, !!dxf); } catch (e) {}
+    if (r !== 'ok') { engineWait.delete(job); resolve({ ok: false, error: 'start' }); }
+  });
+}
+// 페이지에 있는 바이트를 앱 쪽 임시 파일로 (최근 목록에서 열 때)
+async function stageBytes(buf) {
+  const id = NATIVE.stageBegin();
+  if (!id) return null;
+  const u8 = new Uint8Array(buf);
+  const CH = 768 * 1024;
+  for (let i = 0; i < u8.length; i += CH) {
+    const part = u8.subarray(i, Math.min(u8.length, i + CH));
+    let bin = '';
+    for (let j = 0; j < part.length; j += 0x8000) bin += String.fromCharCode.apply(null, part.subarray(j, j + 0x8000));
+    if (!NATIVE.stageAppend(id, btoa(bin))) { NATIVE.engineDiscard(id); return null; }
+    if ((i / CH) % 8 === 7) await new Promise((r) => setTimeout(r, 0));
+  }
+  return id;
+}
+function sniffKind(buf) {
+  const b = new Uint8Array(buf, 0, Math.min(32, buf.byteLength));
+  const head = String.fromCharCode(...b);
+  if (/^AC10\d\d/.test(head)) return parseInt(head.slice(4, 6), 10) < 9 ? 'old' : 'dwg';
+  if (head.startsWith('AutoCAD Binary DXF')) return 'dxf';
+  const t = head.replace(/^\uFEFF/, '').trimStart();
+  if (/^0\s*[\r\n]+\s*SECTION/i.test(t) || /^999/.test(t) || /^0\s*$/m.test(t.slice(0, 4))) return 'dxf';
+  return 'unknown';
+}
+async function openNative(buf, incomingId) {
+  const kind = sniffKind(buf);
+  if (kind !== 'dwg' && kind !== 'dxf') return null; // 오류 안내는 예전 엔진이 한다
+  const version = kind === 'dxf' ? 'DXF' : String.fromCharCode(...new Uint8Array(buf, 0, 6));
+  let name = incomingId, staged = false;
+  if (!name) {
+    busy(true, '도면 넘기는 중…');
+    name = await stageBytes(buf);
+    staged = true;
+    if (!name) return null;
+  }
+  busy(true, '도면 읽는 중…');
+  const t0 = performance.now();
+  const r = await engineRun(name, kind === 'dxf');
+  if (staged) NATIVE.engineDiscard(name);
+  if (!r.ok) { console.warn('native engine', JSON.stringify(r)); return null; }
+  try {
+    const url = new URL('/incoming/' + name + '.sgdb', location.href).href;
+    const model = await parseMsg({ sgdb: url, version });
+    console.log('native ms', r.ms, 'total', Math.round(performance.now() - t0), 'entities', r.entities);
+    return model;
+  } catch (e) {
+    if (e.user) throw e;
+    console.warn('native model', e.message);
+    return null;
+  } finally {
+    NATIVE.engineDiscard(name + '.sgdb');
+  }
+}
+
+async function openBytes(buf, name, recentId = null, incomingId = null) {
   const size = buf.byteLength;
   const mb = size / 1048576;
   const mbText = mb >= 10 ? Math.round(mb) + 'MB' : mb.toFixed(1) + 'MB';
@@ -342,7 +417,8 @@ async function openBytes(buf, name, recentId = null) {
     else {
       const th = dwgThumb(buf);
       if (th) busyImg(th);
-      model = await parse(buf);
+      if (ENGINE) model = await openNative(buf, incomingId);
+      if (!model) model = await parse(buf);
       if (key) MC.put(key, model);
     }
     busy(true, '화면 준비 중…');
@@ -383,7 +459,10 @@ async function openBytes(buf, name, recentId = null) {
 const VER = { AC1012: 'R13', AC1014: 'R14', AC1015: '2000', AC1018: '2004', AC1021: '2007', AC1024: '2010', AC1027: '2013', AC1032: '2018' };
 function verName(v) { return v === 'DXF' ? 'DXF' : VER[v] ? 'DWG ' + VER[v] : ''; }
 
-$('#btnOpen').addEventListener('click', () => $('#file').click());
+$('#btnOpen').addEventListener('click', () => {
+  if (NATIVE && typeof NATIVE.pickFile === 'function') { try { if (NATIVE.pickFile()) return; } catch (e) {} }
+  $('#file').click();
+});
 $('#file').addEventListener('change', async (ev) => {
   const f = ev.target.files && ev.target.files[0];
   ev.target.value = '';
@@ -403,9 +482,11 @@ window.__openUrl = async (url, name) => {
     const r = await fetch(url);
     if (!r.ok) throw new Error(r.status);
     const buf = await r.arrayBuffer();
-    openBytes(buf, name || '도면.dwg');
+    const m = /\/incoming\/([^/?#]+)$/.exec(url);
+    openBytes(buf, name || '도면.dwg', null, m && ENGINE ? decodeURIComponent(m[1]) : null);
   } catch (e) { busy(false); toast('받은 파일을 읽지 못했어요.'); }
 };
+window.__pickCancel = () => busy(false);
 
 function showViewer(on) {
   $('#viewer').hidden = !on;
@@ -2482,7 +2563,13 @@ window.__onBack = () => {
 // ---------------- 시작 ----------------
 showRecent();
 // 해석 엔진을 미리 준비해 둔다 (첫 도면 열기가 빨라짐)
-setTimeout(() => { try { getWorker().postMessage({ warm: true }); } catch (e) {} DB.open().catch(() => {}); }, 300);
+setTimeout(() => {
+  try {
+    if (ENGINE && typeof NATIVE.engineWarm === 'function') NATIVE.engineWarm();
+    else getWorker().postMessage({ warm: true });
+  } catch (e) {}
+  DB.open().catch(() => {});
+}, 300);
 // 지난번에 도면을 열다가 앱이 멈췄으면 이유를 알려준다
 (() => {
   const op = store.get('opening');

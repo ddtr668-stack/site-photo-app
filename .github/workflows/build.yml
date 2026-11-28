@@ -21,6 +21,19 @@ jobs:
       - uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: "8.9"
+      # 네이티브 엔진: LibreDWG를 정해 둔 판으로 받고 빠르게 고친 부분(patch)을 적용
+      - name: Get LibreDWG
+        shell: bash
+        run: |
+          set -e
+          cd app/src/main/cpp
+          git init -q libredwg
+          cd libredwg
+          git remote add origin https://github.com/LibreDWG/libredwg.git
+          git fetch -q --depth 1 origin "$(cat ../libredwg.commit)"
+          git checkout -q FETCH_HEAD
+          git apply ../libredwg.patch
+          git describe --long --tags --always > .version 2>/dev/null || echo "0.14-sgdb" > .version
       - name: Build
         shell: bash
         run: |

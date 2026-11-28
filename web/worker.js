@@ -2,6 +2,7 @@
 // ※ 이 파일의 결과 형식이나 해석 방식을 바꾸면 app.js의 MODEL_VER를 올릴 것 (저장해 둔 옛 결과 무효화)
 // LibreDWG(WebAssembly)로 파일을 읽고, 블록·치수·해치까지 펼쳐서 넘긴다.
 import { LibreDwg, Dwg_File_Type } from './vendor/libredwg/dist/libredwg-web.js';
+import { readSGDB } from './sgdb.js';
 
 let libPromise = null;
 function getLib() {
@@ -11,6 +12,7 @@ function getLib() {
 
 self.onmessage = async (ev) => {
   if (ev.data && ev.data.warm) { getLib().catch(() => { libPromise = null; }); return; } // 앱 켤 때 엔진 미리 준비
+  if (ev.data && ev.data.sgdb) { fromNative(ev.data); return; } // 네이티브 엔진이 만든 결과
   const { id, buf } = ev.data;
   const say = (t) => self.postMessage({ id, progress: t });
   try {
@@ -39,6 +41,22 @@ self.onmessage = async (ev) => {
     self.postMessage({ id, ok: false, error: e && e.user ? e.message : '도면을 열지 못했어요. (' + (e && e.message || e) + ')' });
   }
 };
+
+// 네이티브 엔진(앱)이 만든 .sgdb를 받아서 정리
+async function fromNative({ id, sgdb, version }) {
+  try {
+    self.postMessage({ id, progress: '도면 정리 중…' });
+    const r = await fetch(sgdb);
+    if (!r.ok) throw new Error('sgdb ' + r.status);
+    const db = readSGDB(await r.arrayBuffer());
+    const model = build(db);
+    model.version = version;
+    if (!model.count) throw userError('도면에 표시할 내용이 없어요. (모형 공간이 비어 있음)');
+    self.postMessage({ id, ok: true, model }, model.transfer);
+  } catch (e) {
+    self.postMessage({ id, ok: false, user: !!(e && e.user), error: e && e.user ? e.message : 'native: ' + (e && e.message || e) });
+  }
+}
 
 function userError(m) { const e = new Error(m); e.user = true; return e; }
 

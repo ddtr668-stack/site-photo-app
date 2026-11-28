@@ -21,6 +21,12 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
+        <!-- 도면 해석 엔진: 따로 된 프로세스 (엔진이 죽어도 앱은 살아 있게) -->
+        <service
+            android:name=".EngineService"
+            android:exported="false"
+            android:process=":engine" />
+
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|uiMode"
