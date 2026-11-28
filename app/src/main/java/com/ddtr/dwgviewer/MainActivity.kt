@@ -406,6 +406,39 @@ class MainActivity : Activity() {
             } catch (e: Exception) { false }
         }
 
+        // ---- 큰 도면 최근 목록: 파일은 앱 저장소(files/recent)에 둔다 ----
+        @JavascriptInterface
+        fun keepFile(incomingName: String, id: String): Boolean {
+            if (!safeName(incomingName) || !safeName(id)) return false
+            return try {
+                val src = File(File(cacheDir, "incoming"), incomingName)
+                val dir = File(filesDir, "recent").apply { mkdirs() }
+                val dst = File(dir, id)
+                if (dst.exists()) dst.delete()
+                src.renameTo(dst) || run { src.copyTo(dst, overwrite = true); true }
+            } catch (e: Exception) { false }
+        }
+
+        /** 저장해 둔 큰 도면을 incoming으로 꺼내기 (링크, 안 되면 복사). 반환: incoming 이름 */
+        @JavascriptInterface
+        fun recentPrepare(id: String): String {
+            if (!safeName(id)) return ""
+            return try {
+                val src = File(File(filesDir, "recent"), id)
+                if (!src.exists()) return ""
+                val name = UUID.randomUUID().toString() + ".bin"
+                val dst = File(File(cacheDir, "incoming").apply { mkdirs() }, name)
+                try { android.system.Os.link(src.absolutePath, dst.absolutePath) } catch (e: Exception) { src.copyTo(dst, overwrite = true) }
+                name
+            } catch (e: Exception) { "" }
+        }
+
+        @JavascriptInterface
+        fun recentDelete(id: String) {
+            if (!safeName(id)) return
+            try { File(File(filesDir, "recent"), id).delete() } catch (e: Exception) { }
+        }
+
         /** 앱 안 '열기': 시스템 파일 선택 → incoming에 복사 → window.__openUrl */
         @JavascriptInterface
         fun pickFile(): Boolean {

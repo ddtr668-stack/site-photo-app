@@ -130,15 +130,42 @@ const DB = {
   },
   async save(name, buf) {
     const all = await this.list();
-    const same = all.find((m) => m.name === name && m.size === buf.byteLength);
+    const same = all.find((m) => m.name === name && m.size === buf.byteLength && !m.native);
     const id = same ? same.id : Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    const old = all.filter((m) => m.id !== id).slice(14);
     await this.tx(['meta', 'data'], 'readwrite', (t) => {
       t.objectStore('meta').put({ id, name, size: buf.byteLength, time: Date.now() });
       t.objectStore('data').put(buf, id);
+    });
+    await this.trim(id);
+    return id;
+  },
+  // 큰 도면: 파일은 앱(네이티브) 저장소에 두고 목록 정보만 저장
+  async saveNative(name, size, incomingName) {
+    const all = await this.list();
+    const same = all.find((m) => m.name === name && m.size === size && m.native);
+    const id = same ? same.id : 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    let ok = false;
+    try { ok = NATIVE.keepFile(incomingName, id); } catch (e) {}
+    if (!ok) return null;
+    await this.tx(['meta'], 'readwrite', (t) => t.objectStore('meta').put({ id, name, size, time: Date.now(), native: true }));
+    await this.trim(id);
+    return id;
+  },
+  // 15개 넘으면 오래된 것부터, 큰 도면은 4개까지만
+  async trim(keepId) {
+    const all = await this.list();
+    const old = [];
+    let nat = 0;
+    const rest = all.filter((m) => {
+      if (m.native && m.id !== keepId && ++nat > 4 - (all.some((x) => x.id === keepId && x.native) ? 1 : 0)) { old.push(m); return false; }
+      return true;
+    });
+    rest.forEach((m, i) => { if (i >= 15 && m.id !== keepId) old.push(m); });
+    if (!old.length) return;
+    await this.tx(['meta', 'data', 'notes'], 'readwrite', (t) => {
       for (const o of old) { t.objectStore('meta').delete(o.id); t.objectStore('data').delete(o.id); t.objectStore('notes').delete(o.id); }
     });
-    return id;
+    for (const o of old) if (o.native && NATIVE && NATIVE.recentDelete) { try { NATIVE.recentDelete(o.id); } catch (e) {} }
   },
   async getNotes(id) {
     const d = await this.open();
@@ -160,6 +187,7 @@ const DB = {
   },
   async del(id) {
     await this.tx(['meta', 'data', 'notes'], 'readwrite', (t) => { t.objectStore('meta').delete(id); t.objectStore('data').delete(id); t.objectStore('notes').delete(id); });
+    if (String(id).startsWith('n') && NATIVE && NATIVE.recentDelete) { try { NATIVE.recentDelete(id); } catch (e) {} }
   },
 };
 
@@ -180,6 +208,20 @@ async function showRecent() {
       if (ev.target.closest('.del')) {
         ev.stopPropagation();
         await DB.del(m.id); showRecent();
+        return;
+      }
+      if (m.native) {
+        // 큰 도면: 앱 저장소에서 꺼내 열기
+        let inc = '';
+        try { inc = NATIVE && NATIVE.recentPrepare ? NATIVE.recentPrepare(m.id) : ''; } catch (e) {}
+        if (!inc) { toast('파일을 찾을 수 없어요.'); await DB.del(m.id); showRecent(); return; }
+        busy(true, '파일 읽는 중…');
+        try {
+          const r = await fetch(new URL('/incoming/' + inc, location.href).href);
+          const buf = await r.arrayBuffer();
+          DB.touch(m.id).catch(() => {});
+          openBytes(buf, m.name, m.id, inc);
+        } catch (e) { busy(false); toast('파일을 읽지 못했어요.'); }
         return;
       }
       const buf = await DB.get(m.id);
@@ -440,6 +482,10 @@ async function openBytes(buf, name, recentId = null, incomingId = null) {
     $('#unit').value = state.unit;
     $('#fname').textContent = name;
     $('#finfo').textContent = [model.version ? verName(model.version) : '', fmtNum(model.count) + '개 객체', u ? '단위 ' + state.unit : '단위 미지정(mm로 계산)'].filter(Boolean).join(' · ');
+    if (!fileId && incomingId && mb > RECENT_MAX_MB && NATIVE && NATIVE.keepFile) {
+      try { fileId = await DB.saveNative(name, size, incomingId); } catch (e) {}
+      if (fileId) state.fileId = fileId;
+    }
     showViewer(true);
     setMode('pan');
     resize();
@@ -488,6 +534,9 @@ window.__openUrl = async (url, name) => {
   } catch (e) { busy(false); toast('받은 파일을 읽지 못했어요.'); }
 };
 window.__pickCancel = () => busy(false);
+$('#finfo').addEventListener('click', () => {
+  toast('GPU ' + (useGL() ? '켬' : '끔') + ' · 엔진 ' + (ENGINE ? '네이티브' : '웹') + ' · 한 번 그리기 ' + Math.round(lastDrawMs) + 'ms · 글자 ' + Math.round(lastTopMs) + 'ms', 4000);
+});
 
 function showViewer(on) {
   $('#viewer').hidden = !on;
@@ -987,12 +1036,14 @@ function invert(m) {
 
 // ---------------- 화면 캔버스 ----------------
 const cv = $('#cv');
+const tl = $('#tl'); // 손가락·펜 입력을 받는 층 (움직이지 않음)
 // GPU(WebGL2)를 쓸 수 있으면 선·면은 #gl에, 글자·메모는 투명한 #cv에 그린다
 const glcv = $('#gl');
 const GLON = store.get('nogl') !== '1' && typeof GLR !== 'undefined' && GLR.init(glcv);
 if (!GLON) glcv.hidden = true;
 const ctx = cv.getContext('2d', { alpha: GLON });
-let lastTopMs = 0;
+let lastTopMs = 0, lastDrawMs = 0;
+let needFullMarks = false; // 메모를 그리는 중 등 바로 다시 그려야 할 때
 function useGL() { return GLON && GLR.active && state.scene && state.scene.glOk; }
 function glUpload(sc) {
   if (!GLON) return;
@@ -1008,7 +1059,7 @@ let lastFullMs = 0, snapshot = null, snapView = null, needFull = false, rafId = 
 // → 캔버스 픽셀 수를 약 320만 개로 제한한다 (폰은 그대로, 태블릿은 살짝 낮은 해상도).
 const MAX_CANVAS_PX = 3.2e6;
 function resize() {
-  const r = cv.getBoundingClientRect();
+  const r = tl.getBoundingClientRect();
   const css = Math.max(1, r.width * r.height);
   DPR = Math.min(window.devicePixelRatio || 1, 2.5, Math.sqrt(MAX_CANVAS_PX / css));
   DPR = Math.max(DPR, 0.75);
@@ -1058,6 +1109,18 @@ function requestDraw(full) {
 function frame() {
   rafId = 0;
   if (!state.scene || $('#viewer').hidden) return;
+  const bgc = cssColors(state.scene, state.bg).bg;
+  if (bgc !== viewerBg) { viewerBg = bgc; $('#viewer').style.background = bgc; }
+  if (interacting && !settleNow && drawnView && !sameView(drawnView, state.view) && !needFullMarks) {
+    moveLayers(drawnView, state.view);
+    clearTimeout(settleTimer);
+    // 잠깐 멈추면 새로 그리기 (한 번 그리는 데 오래 걸리는 큰 도면은 손을 뗄 때만)
+    if (lastDrawMs < 90) settleTimer = setTimeout(() => { if (interacting) { settleNow = true; requestDraw(true); } }, 220);
+    return;
+  }
+  settleNow = false;
+  drawnView = { ...state.view };
+  const tDraw = performance.now();
   const opts = { bg: state.bg, lw: 0.85 * DPR, px: DPR };
   if (useGL()) {
     const cols = cssColors(state.scene, state.bg);
@@ -1071,6 +1134,8 @@ function frame() {
     if (!fast) lastTopMs = performance.now() - t0;
     drawOverlay(ctx, CW, CH, state.view, { bg: state.bg, px: DPR, live: true });
     drawLoupe();
+    resetLayers();
+    lastDrawMs = performance.now() - tDraw;
     if (inkClearAfterFrame && !state.draft) { inkClearAfterFrame = false; ictx.setTransform(1, 0, 0, 1, 0, 0); ictx.clearRect(0, 0, ink.width, ink.height); }
     return;
   }
@@ -1100,8 +1165,30 @@ function frame() {
   }
   drawOverlay(ctx, CW, CH, state.view, { bg: state.bg, px: DPR, live: true });
   drawLoupe();
+  resetLayers();
+  lastDrawMs = performance.now() - tDraw;
   if (inkClearAfterFrame && !state.draft) { inkClearAfterFrame = false; ictx.setTransform(1, 0, 0, 1, 0, 0); ictx.clearRect(0, 0, ink.width, ink.height); }
 }
+// 확대·이동하는 동안에는 다시 그리지 않고, 마지막에 그린 그림(GPU 층·글자 층)을 화면 합성기로 옮기고 늘린다.
+// 손을 떼거나 잠깐 멈추면 그때 새로 그린다.
+let drawnView = null, layersMoved = false, settleTimer = 0, settleNow = false;
+function sameView(a, b) { return a && b && a.s === b.s && a.cx === b.cx && a.cy === b.cy; }
+function moveLayers(from, to) {
+  const k = to.s / from.s;
+  const tx = (CW / 2 * (1 - k) + (from.cx - to.cx) * to.s) / DPR;
+  const ty = (CH / 2 * (1 - k) + (to.cy - from.cy) * to.s) / DPR;
+  const t = 'translate(' + tx.toFixed(2) + 'px,' + ty.toFixed(2) + 'px) scale(' + k.toFixed(5) + ')';
+  cv.style.transform = t;
+  if (GLON) glcv.style.transform = t;
+  layersMoved = true;
+}
+function resetLayers() {
+  if (!layersMoved) return;
+  cv.style.transform = '';
+  glcv.style.transform = '';
+  layersMoved = false;
+}
+let viewerBg = '';
 function interactStart() { interacting = true; clearTimeout(idleTimer); }
 function interactEnd() {
   clearTimeout(idleTimer);
@@ -1131,18 +1218,18 @@ let gest = null; // {type:'pan'|'pinch'|'aim'|'mark', ...}
 let lastTap = { t: 0, x: 0, y: 0 };
 let penSeen = 0; // 마지막으로 S펜을 본 시각 (손바닥 무시용)
 
-function cssPt(ev) { const r = cv.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; }
+function cssPt(ev) { const r = tl.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; }
 // S펜 옆 버튼을 누른 채 쓰거나, 지우개 끝으로 쓰면 지우개
 const penErase = (ev) => ev.pointerType === 'pen' && ((ev.buttons & 2) || (ev.buttons & 32) || ev.button === 2 || ev.button === 5);
 const penNear = () => [...ptrs.values()].some((q) => q.type === 'pen') || performance.now() - penSeen < 300;
 
-cv.addEventListener('pointerdown', (ev) => {
+tl.addEventListener('pointerdown', (ev) => {
   if (!state.scene) return;
   const pen = ev.pointerType === 'pen';
   if (pen) { penSeen = performance.now(); penDetected(); }
   // 손바닥 무시: S펜을 쓰는 중에 닿은 손가락은 무시
   if (ev.pointerType === 'touch' && state.penOnly && penNear()) return;
-  try { cv.setPointerCapture(ev.pointerId); } catch (e) {}
+  try { tl.setPointerCapture(ev.pointerId); } catch (e) {}
   const p = cssPt(ev);
   ptrs.set(ev.pointerId, { ...p, type: ev.pointerType });
   interactStart();
@@ -1179,7 +1266,7 @@ cv.addEventListener('pointerdown', (ev) => {
     gest = { type: 'pan', start: p, last: p, moved: 0, t: performance.now(), mouseMeasure: measuring && ev.pointerType === 'mouse' };
   }
 });
-cv.addEventListener('pointermove', (ev) => {
+tl.addEventListener('pointermove', (ev) => {
   if (!state.scene) return;
   const pen = ev.pointerType === 'pen';
   if (pen) penSeen = performance.now();
@@ -1254,13 +1341,13 @@ function endPtr(ev) {
   interactEnd();
   requestDraw();
 }
-cv.addEventListener('pointerup', endPtr);
-cv.addEventListener('pointercancel', endPtr);
-cv.addEventListener('pointerleave', (ev) => {
+tl.addEventListener('pointerup', endPtr);
+tl.addEventListener('pointercancel', endPtr);
+tl.addEventListener('pointerleave', (ev) => {
   if ((ev.pointerType === 'mouse' || ev.pointerType === 'pen') && !ptrs.size && isMeasure()) { state.meas.cursor = null; requestDraw(); }
   if (ev.pointerType !== 'touch' && !ptrs.size) clearInk();
 });
-cv.addEventListener('wheel', (ev) => {
+tl.addEventListener('wheel', (ev) => {
   if (!state.scene) return;
   ev.preventDefault();
   const p = cssPt(ev);
@@ -1270,7 +1357,7 @@ cv.addEventListener('wheel', (ev) => {
   if (isMeasure()) updateAim(p.x, p.y, true);
   requestDraw();
 }, { passive: false });
-cv.addEventListener('contextmenu', (e) => e.preventDefault());
+tl.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // ---------------- 스냅 ----------------
 function findSnap(wx, wy, radiusWorld) {
@@ -1322,7 +1409,7 @@ function drawLoupe() {
   const ld = Math.round(size * DPR);
   if (loupe.width !== ld) { loupe.width = ld; loupe.height = ld; }
   // 손가락 반대편 위쪽 모서리에 둔다
-  const r = cv.getBoundingClientRect();
+  const r = tl.getBoundingClientRect();
   const left = loupeAt.x < r.width / 2 ? r.width - size - 14 : 14;
   loupe.style.left = left + 'px';
   loupe.style.top = (parseFloat(getComputedStyle(document.querySelector('.topbar')).height) + 12) + 'px';
@@ -2013,7 +2100,7 @@ function placeBlkBar() {
   let top = Infinity, xs = 0;
   const cs = blkCorners(m);
   for (const [x, y] of cs) { const q = toScreen(x, y); top = Math.min(top, q.y); xs += q.x; }
-  const r = cv.getBoundingClientRect();
+  const r = tl.getBoundingClientRect();
   const cx = Math.max(110, Math.min(r.width - 110, xs / 4 / DPR));
   const cy = Math.max(110, top / DPR - 14);
   bar.style.left = cx + 'px'; bar.style.top = cy + 'px';
