@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 리퀴드 글래스 B안: 어두운 바탕(번진 빛) + 유리 카드 위 평면도·노란 치수선 -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/icon_bg" />
-    <foreground android:drawable="@drawable/ic_launcher_fg" />
+    <background android:drawable="@mipmap/ic_launcher_bg" />
+    <foreground android:drawable="@mipmap/ic_launcher_fg_glass" />
+    <!-- 테마 아이콘(단색)은 예전 선 그림 그대로 -->
     <monochrome android:drawable="@drawable/ic_launcher_fg" />
 </adaptive-icon>
